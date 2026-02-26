@@ -3,605 +3,822 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>말해보카 S2 퀴즈</title>
+<title>말해보카 S2 — Structure Recall</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #13131a;
-    --surface2: #1c1c28;
-    --border: #2a2a3d;
-    --accent: #c8a96e;
-    --accent2: #7c6fcd;
-    --text: #e8e8f0;
-    --text-muted: #7070a0;
-    --correct: #5cb88a;
-    --wrong: #e06c75;
-    --radius: 16px;
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Noto Sans KR', sans-serif;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  body::before {
-    content: '';
-    position: fixed; inset: 0;
-    background:
-      radial-gradient(ellipse 60% 50% at 20% 10%, rgba(124,111,205,0.12) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 60% at 80% 90%, rgba(200,169,110,0.10) 0%, transparent 60%);
-    pointer-events: none; z-index: 0;
-  }
-  .app {
-    position: relative; z-index: 1;
-    width: 100%; max-width: 680px;
-    padding: 24px 16px;
-    min-height: 100vh;
-    display: flex; flex-direction: column;
-  }
-  .screen { display: none; flex-direction: column; gap: 20px; flex: 1; }
-  .screen.active { display: flex; }
-  .home-header { text-align: center; padding: 40px 0 20px; }
-  .home-header .eyebrow {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px; letter-spacing: 0.25em;
-    color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;
-  }
-  .home-header h1 {
-    font-family: 'Playfair Display', serif;
-    font-size: clamp(32px, 8vw, 52px); line-height: 1.1;
-  }
-  .home-header h1 em { font-style: italic; color: var(--accent); }
-  .home-header p { margin-top: 12px; font-size: 14px; color: var(--text-muted); line-height: 1.6; }
-  .task-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .task-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 28px 20px;
-    cursor: pointer; transition: all 0.25s ease; position: relative; overflow: hidden;
-  }
-  .task-card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s; }
-  .task-card.a::before { background: linear-gradient(135deg, rgba(124,111,205,0.15), transparent); }
-  .task-card.b::before { background: linear-gradient(135deg, rgba(200,169,110,0.15), transparent); }
-  .task-card:hover { transform: translateY(-3px); border-color: var(--text-muted); }
-  .task-card:hover::before { opacity: 1; }
-  .task-card .tag {
-    font-family: 'DM Mono', monospace; font-size: 10px;
-    letter-spacing: 0.2em; text-transform: uppercase;
-    padding: 4px 8px; border-radius: 4px; display: inline-block; margin-bottom: 14px;
-  }
-  .task-card.a .tag { background: rgba(124,111,205,0.2); color: var(--accent2); }
-  .task-card.b .tag { background: rgba(200,169,110,0.2); color: var(--accent); }
-  .task-card h2 { font-family: 'Playfair Display', serif; font-size: 18px; line-height: 1.3; margin-bottom: 6px; }
-  .task-card p { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-  .task-card .count { margin-top: 16px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); }
-  .settings-panel {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 20px;
-  }
-  .settings-panel h3 {
-    font-size: 12px; font-family: 'DM Mono', monospace;
-    letter-spacing: 0.15em; text-transform: uppercase;
-    color: var(--text-muted); margin-bottom: 16px;
-  }
-  .setting-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0; border-bottom: 1px solid var(--border); gap: 12px;
-  }
-  .setting-row:last-child { border-bottom: none; }
-  .setting-label { font-size: 13px; color: var(--text); }
-  .setting-sublabel { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-  .toggle-group {
-    display: flex; background: var(--bg);
-    border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex-shrink: 0;
-  }
-  .toggle-btn {
-    padding: 6px 12px; font-size: 12px; font-family: 'DM Mono', monospace;
-    border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s;
-  }
-  .toggle-btn.active { background: var(--accent2); color: #fff; }
-  .toggle-btn.active.gold { background: var(--accent); color: var(--bg); }
-  .quiz-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
-  .back-btn {
-    background: none; border: none; color: var(--text-muted);
-    cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 8px; transition: color 0.2s;
-  }
-  .back-btn:hover { color: var(--text); }
-  .progress-info { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); text-align: center; }
-  .progress-info .current { color: var(--text); font-size: 16px; font-weight: 500; }
-  .mode-badge {
-    font-family: 'DM Mono', monospace; font-size: 10px;
-    padding: 4px 8px; border-radius: 6px; background: var(--surface2); color: var(--text-muted); letter-spacing: 0.1em;
-  }
-  .progress-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent2), var(--accent));
-    border-radius: 2px; transition: width 0.4s ease;
-  }
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 20px; padding: 32px 28px;
-    flex: 1; min-height: 240px;
-    display: flex; flex-direction: column; gap: 16px;
-    position: relative; overflow: hidden;
-    animation: cardIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  @keyframes cardIn {
-    from { opacity: 0; transform: translateY(20px) scale(0.97); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  .card::after {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--accent2), transparent); opacity: 0.5;
-  }
-  .card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .card-type-badge {
-    font-family: 'DM Mono', monospace; font-size: 10px;
-    padding: 3px 8px; border-radius: 4px; letter-spacing: 0.1em; text-transform: uppercase;
-  }
-  .badge-cloze { background: rgba(124,111,205,0.2); color: var(--accent2); }
-  .badge-structure { background: rgba(200,169,110,0.2); color: var(--accent); }
-  .badge-paraphrase { background: rgba(92,184,138,0.2); color: var(--correct); }
-  .card-section { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); letter-spacing: 0.1em; }
-  .card-question { font-size: 15px; line-height: 1.9; color: var(--text); flex: 1; }
-  .blank {
-    display: inline-block; background: var(--surface2);
-    border: 1.5px solid var(--accent2); border-radius: 6px;
-    padding: 0 8px; min-width: 80px; color: var(--accent2);
-    font-style: italic; font-family: 'DM Mono', monospace; font-size: 13px; transition: all 0.3s;
-  }
-  .blank.revealed { background: rgba(92,184,138,0.15); border-color: var(--correct); color: var(--correct); }
-  .blank.wrong-reveal { background: rgba(224,108,117,0.15); border-color: var(--wrong); color: var(--wrong); }
-  .input-area { display: flex; flex-direction: column; gap: 10px; }
-  .answer-input {
-    width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
-    border-radius: 10px; padding: 12px 16px; color: var(--text);
-    font-family: 'Noto Sans KR', sans-serif; font-size: 14px; outline: none;
-    transition: border-color 0.2s; resize: none;
-  }
-  .answer-input:focus { border-color: var(--accent2); }
-  .answer-input.correct { border-color: var(--correct); background: rgba(92,184,138,0.08); }
-  .answer-input.incorrect { border-color: var(--wrong); background: rgba(224,108,117,0.08); }
-  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .btn {
-    padding: 12px 16px; border-radius: 10px; font-size: 13px;
-    font-family: 'Noto Sans KR', sans-serif; font-weight: 500;
-    border: none; cursor: pointer; transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-  }
-  .btn:active { transform: scale(0.97); }
-  .btn-primary { background: var(--accent2); color: #fff; grid-column: 1 / -1; }
-  .btn-primary:hover { filter: brightness(1.15); }
-  .btn-secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); }
-  .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
-  .btn-gold { background: var(--accent); color: var(--bg); font-weight: 700; grid-column: 1 / -1; }
-  .btn-gold:hover { filter: brightness(1.1); }
-  .feedback {
-    border-radius: 10px; padding: 14px 16px; font-size: 13px; line-height: 1.7;
-    display: none; animation: fadeIn 0.3s ease;
-  }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-  .feedback.show { display: block; }
-  .feedback.correct-fb { background: rgba(92,184,138,0.1); border: 1px solid rgba(92,184,138,0.3); }
-  .feedback.wrong-fb { background: rgba(224,108,117,0.1); border: 1px solid rgba(224,108,117,0.3); }
-  .feedback .answer-label {
-    font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;
-  }
-  .feedback .answer-text { color: var(--text); font-size: 14px; line-height: 1.7; }
-  .highlight { color: var(--accent); font-weight: 700; }
-  .hint-text {
-    font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent);
-    padding: 8px 12px; background: rgba(200,169,110,0.08);
-    border-radius: 8px; border: 1px solid rgba(200,169,110,0.2); display: none;
-  }
-  .hint-text.show { display: block; }
-  .bookmark-btn {
-    background: none; border: none; font-size: 18px; cursor: pointer;
-    padding: 4px; color: var(--text-muted); transition: all 0.2s; line-height: 1;
-  }
-  .bookmark-btn.active { color: var(--accent); }
-  .bookmark-btn:hover { transform: scale(1.2); }
-  .result-screen { text-align: center; padding: 20px 0; display: flex; flex-direction: column; gap: 20px; flex: 1; }
-  .result-header h2 { font-family: 'Playfair Display', serif; font-size: 36px; margin-bottom: 8px; }
-  .result-header p { color: var(--text-muted); font-size: 14px; }
-  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 12px; }
-  .stat-card .val { font-family: 'Playfair Display', serif; font-size: 32px; color: var(--accent); display: block; }
-  .stat-card .lbl { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-top: 4px; }
-  .wrong-list {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px; text-align: left; max-height: 200px; overflow-y: auto;
-  }
-  .wrong-list h4 {
-    font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 12px;
-  }
-  .wrong-item { font-size: 12px; color: var(--text-muted); padding: 8px 0; border-bottom: 1px solid var(--border); line-height: 1.5; }
-  .wrong-item:last-child { border-bottom: none; }
-  .wrong-item .wi-section { color: var(--wrong); font-family: 'DM Mono', monospace; font-size: 10px; }
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-  @media (max-width: 480px) {
-    .task-cards { grid-template-columns: 1fr; }
-    .card { padding: 24px 18px; }
-  }
+:root{
+  --bg:#08080e;--surface:#111118;--surface2:#1a1a26;
+  --border:#252535;--accent:#c8a96e;--accent2:#7c6fcd;
+  --text:#e4e4f0;--muted:#686890;
+  --ok:#5cb88a;--err:#e06c75;--r:14px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;min-height:100vh;display:flex;align-items:flex-start;justify-content:center}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 50% at 15% 5%,rgba(124,111,205,.13) 0%,transparent 55%),radial-gradient(ellipse 50% 60% at 85% 95%,rgba(200,169,110,.11) 0%,transparent 55%);pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;width:100%;max-width:700px;padding:20px 16px 40px;min-height:100vh;display:flex;flex-direction:column;gap:0}
+.screen{display:none;flex-direction:column;gap:18px;flex:1}
+.screen.active{display:flex}
+
+/* ── HOME ── */
+.home-header{text-align:center;padding:36px 0 16px}
+.eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.25em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.home-header h1{font-family:'Playfair Display',serif;font-size:clamp(30px,8vw,50px);line-height:1.1}
+.home-header h1 em{font-style:italic;color:var(--accent)}
+.home-header p{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6}
+.task-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px 18px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
+.task-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s}
+.task-card.a::before{background:linear-gradient(135deg,rgba(124,111,205,.18),transparent)}
+.task-card.b::before{background:linear-gradient(135deg,rgba(200,169,110,.18),transparent)}
+.task-card:hover{transform:translateY(-3px);border-color:var(--muted)}
+.task-card:hover::before{opacity:1}
+.task-card .tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;padding:3px 8px;border-radius:4px;display:inline-block;margin-bottom:12px}
+.task-card.a .tag{background:rgba(124,111,205,.2);color:var(--accent2)}
+.task-card.b .tag{background:rgba(200,169,110,.2);color:var(--accent)}
+.task-card h2{font-family:'Playfair Display',serif;font-size:17px;line-height:1.3;margin-bottom:5px}
+.task-card p{font-size:12px;color:var(--muted);line-height:1.5}
+.task-card .cnt{margin-top:14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+.settings{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.settings h3{font-size:11px;font-family:'DM Mono',monospace;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);gap:12px}
+.srow:last-child{border-bottom:none}
+.slabel{font-size:13px;color:var(--text)}
+.ssub{font-size:11px;color:var(--muted);margin-top:1px}
+.tgroup{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0}
+.tbtn{padding:5px 11px;font-size:11px;font-family:'DM Mono',monospace;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s}
+.tbtn.on{background:var(--accent2);color:#fff}
+.tbtn.on.gold{background:var(--accent);color:var(--bg)}
+
+/* ── QUIZ ── */
+.qheader{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+.backbtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px 8px;border-radius:8px;transition:color .2s}
+.backbtn:hover{color:var(--text)}
+.pinfo{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);text-align:center}
+.pinfo .cur{color:var(--text);font-size:15px;font-weight:600}
+.mbadge{font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:6px;background:var(--surface2);color:var(--muted);letter-spacing:.08em}
+.pbar-wrap{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.pbar-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:2px;transition:width .4s ease}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 26px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;animation:cardIn .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+.card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent2),transparent);opacity:.45}
+
+.cmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctype{font-family:'DM Mono',monospace;font-size:10px;padding:3px 7px;border-radius:4px;letter-spacing:.08em;text-transform:uppercase}
+.ct-a{background:rgba(124,111,205,.2);color:var(--accent2)}
+.ct-b{background:rgba(200,169,110,.2);color:var(--accent)}
+.csec{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+.bmkbtn{background:none;border:none;font-size:17px;cursor:pointer;padding:3px;color:var(--muted);transition:all .2s;line-height:1;margin-left:auto}
+.bmkbtn.on{color:var(--accent)}
+
+/* 카드 본문 */
+.cq{font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.5}
+.cprompt{font-size:15px;line-height:2.2;color:var(--text)}
+.red-blank{
+  display:inline-block;background:rgba(224,108,117,.12);
+  border:1.5px dashed rgba(224,108,117,.6);border-radius:6px;
+  padding:1px 10px;min-width:90px;color:#e06c75;
+  font-family:'DM Mono',monospace;font-size:13px;font-style:italic;
+  transition:all .3s;vertical-align:middle;
+}
+.red-blank.filled{background:rgba(92,184,138,.12);border:1.5px solid var(--ok);color:var(--ok);font-style:normal}
+.red-blank.wrong{background:rgba(224,108,117,.12);border:1.5px solid var(--err);color:var(--err);font-style:normal}
+
+/* task b: keyword blank */
+.kw-blank{
+  display:inline-block;background:var(--surface2);
+  border:1.5px solid var(--accent2);border-radius:6px;
+  padding:1px 10px;min-width:70px;color:var(--accent2);
+  font-family:'DM Mono',monospace;font-size:13px;font-style:italic;
+  transition:all .3s;vertical-align:middle;
+}
+.kw-blank.filled{background:rgba(92,184,138,.12);border-color:var(--ok);color:var(--ok);font-style:normal}
+.kw-blank.wrong{background:rgba(224,108,117,.12);border-color:var(--err);color:var(--err);font-style:normal}
+
+.tip-box{background:rgba(200,169,110,.07);border:1px solid rgba(200,169,110,.2);border-radius:8px;padding:10px 13px;font-size:12px;color:var(--accent);line-height:1.6}
+
+/* input / buttons */
+.iarea{display:flex;flex-direction:column;gap:9px}
+.ainput{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;outline:none;transition:border-color .2s;resize:none}
+.ainput:focus{border-color:var(--accent2)}
+.ainput.ok{border-color:var(--ok);background:rgba(92,184,138,.07)}
+.ainput.ng{border-color:var(--err);background:rgba(224,108,117,.07)}
+.brow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{padding:11px 14px;border-radius:10px;font-size:13px;font-family:'Noto Sans KR',sans-serif;font-weight:500;border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px}
+.btn:active{transform:scale(.97)}
+.btn-pri{background:var(--accent2);color:#fff;grid-column:1/-1}
+.btn-pri:hover{filter:brightness(1.15)}
+.btn-sec{background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+.btn-sec:hover{border-color:var(--muted);color:var(--text)}
+.btn-gold{background:var(--accent);color:var(--bg);font-weight:700;grid-column:1/-1}
+.btn-gold:hover{filter:brightness(1.1)}
+
+/* feedback */
+.fb{border-radius:10px;padding:13px 15px;font-size:13px;line-height:1.7;display:none;animation:fbin .3s ease}
+@keyframes fbin{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.fb.show{display:block}
+.fb.ok-fb{background:rgba(92,184,138,.09);border:1px solid rgba(92,184,138,.3)}
+.fb.ng-fb{background:rgba(224,108,117,.09);border:1px solid rgba(224,108,117,.3)}
+.fb-lbl{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.fb-txt{color:var(--text);font-size:14px;line-height:1.8}
+.hl{color:var(--accent);font-weight:700}
+
+.hint-txt{font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);padding:8px 12px;background:rgba(200,169,110,.07);border-radius:8px;border:1px solid rgba(200,169,110,.2);display:none}
+.hint-txt.show{display:block}
+
+/* ── TTS ── */
+.tts-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px}
+.tts-btn{background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:2px 4px;border-radius:6px;transition:all .2s;color:var(--muted);flex-shrink:0}
+.tts-btn:hover{color:var(--text);background:var(--border)}
+.tts-btn.playing{color:var(--accent2);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.tts-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);flex:1;letter-spacing:.05em}
+.tts-speed{display:flex;gap:4px}
+.tts-speed button{padding:3px 7px;font-size:10px;font-family:'DM Mono',monospace;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+.tts-speed button.on{background:var(--accent2);border-color:var(--accent2);color:#fff}
+
+/* ── RESULT ── */
+.result{text-align:center;display:flex;flex-direction:column;gap:18px;flex:1;padding:16px 0}
+.result h1{font-family:'Playfair Display',serif;font-size:38px}
+.result .rsub{color:var(--muted);font-size:13px}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 10px}
+.scard .sv{font-family:'Playfair Display',serif;font-size:30px;color:var(--accent);display:block}
+.scard .sk{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:3px}
+.wlist{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:left;max-height:190px;overflow-y:auto}
+.wlist h4{font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.13em;margin-bottom:10px}
+.wi{font-size:12px;color:var(--muted);padding:7px 0;border-bottom:1px solid var(--border);line-height:1.5}
+.wi:last-child{border-bottom:none}
+.wi-sec{color:var(--err);font-family:'DM Mono',monospace;font-size:10px;display:block;margin-bottom:2px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+@media(max-width:480px){.task-grid{grid-template-columns:1fr}.card{padding:22px 16px}}
 </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- HOME -->
-  <div class="screen active" id="homeScreen">
-    <div class="home-header">
-      <div class="eyebrow">말해보카 · S2 인출훈련</div>
-      <h1>Structure<br><em>Recall</em></h1>
-      <p>서론/본론/결론 구조를 몸으로 익히는 빈칸 인출 훈련</p>
+<!-- ══════════ HOME ══════════ -->
+<div class="screen active" id="homeScreen">
+  <div class="home-header">
+    <div class="eyebrow">말해보카 · S2 인출훈련</div>
+    <h1>Structure<br><em>Recall</em></h1>
+    <p>서론/본론/결론 구조를 몸으로 익히는 빈칸 인출 훈련</p>
+  </div>
+  <div class="task-grid">
+    <div class="task-card a" onclick="startTask('A')">
+      <div class="tag">Task A</div>
+      <h2>범용 템플릿</h2>
+      <p>🔴 슬롯을 채워 어떤 주제에도 적용 가능한 S2 구조 완성</p>
+      <div class="cnt" id="cntA">— 문항</div>
     </div>
-    <div class="task-cards">
-      <div class="task-card a" onclick="startTask('A')">
-        <div class="tag">Task A</div>
-        <h2>Space Exploration</h2>
-        <p>사회적 불평등과 우주탐사, 롤스의 정의론까지</p>
-        <div class="count" id="countA">— 문항</div>
-      </div>
-      <div class="task-card b" onclick="startTask('B')">
-        <div class="tag">Task B</div>
-        <h2>Responsibility</h2>
-        <p>새벽 2시 서버장애에서 배우는 책임감의 본질</p>
-        <div class="count" id="countB">— 문항</div>
-      </div>
-    </div>
-    <div class="settings-panel">
-      <h3>⚙ 출제 설정</h3>
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">출제 순서</div>
-          <div class="setting-sublabel">카드가 나오는 순서</div>
-        </div>
-        <div class="toggle-group" id="orderToggle">
-          <button class="toggle-btn active" data-val="sequential" onclick="setSetting('order','sequential',this)">순서</button>
-          <button class="toggle-btn" data-val="reverse" onclick="setSetting('order','reverse',this)">역순</button>
-          <button class="toggle-btn" data-val="random" onclick="setSetting('order','random',this)">랜덤</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">출제 방향</div>
-          <div class="setting-sublabel">빈칸→정답 or 정답→문장</div>
-        </div>
-        <div class="toggle-group" id="dirToggle">
-          <button class="toggle-btn active" data-val="forward" onclick="setSetting('direction','forward',this)">정방향</button>
-          <button class="toggle-btn" data-val="backward" onclick="setSetting('direction','backward',this)">역방향</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <div>
-          <div class="setting-label">오답만 재출제</div>
-          <div class="setting-sublabel">틀린 카드 자동 재시도</div>
-        </div>
-        <div class="toggle-group" id="retryToggle">
-          <button class="toggle-btn active gold" data-val="on" onclick="setSetting('retry','on',this)">ON</button>
-          <button class="toggle-btn" data-val="off" onclick="setSetting('retry','off',this)">OFF</button>
-        </div>
-      </div>
+    <div class="task-card b" onclick="startTask('B')">
+      <div class="tag">Task B</div>
+      <h2>Responsibility</h2>
+      <p>새벽 서버장애 에세이 — 키워드 인출 훈련</p>
+      <div class="cnt" id="cntB">— 문항</div>
     </div>
   </div>
-
-  <!-- QUIZ -->
-  <div class="screen" id="quizScreen">
-    <div class="quiz-header">
-      <button class="back-btn" onclick="goHome()">←</button>
-      <div class="progress-info">
-        <span class="current" id="progressCurrent">1</span>
-        <span> / </span>
-        <span id="progressTotal">10</span>
-      </div>
-      <span class="mode-badge" id="modeBadge">순서</span>
-    </div>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
-    </div>
-    <div class="card" id="quizCard">
-      <div class="card-meta">
-        <span class="card-type-badge badge-cloze" id="cardTypeBadge">Keyword Cloze</span>
-        <span class="card-section" id="cardSection">[서론-Hook]</span>
-        <button class="bookmark-btn" id="bookmarkBtn" onclick="toggleBookmark()">☆</button>
-      </div>
-      <div class="card-question" id="cardQuestion">Loading...</div>
-      <div class="hint-text" id="hintText"></div>
-      <div class="feedback" id="feedback">
-        <div class="answer-label"></div>
-        <div class="answer-text" id="feedbackText"></div>
+  <div class="settings">
+    <h3>⚙ 출제 설정</h3>
+    <div class="srow">
+      <div><div class="slabel">출제 순서</div><div class="ssub">카드가 나오는 순서</div></div>
+      <div class="tgroup" id="og">
+        <button class="tbtn on" data-v="seq" onclick="setSetting('order','seq',this)">순서</button>
+        <button class="tbtn" data-v="rev" onclick="setSetting('order','rev',this)">역순</button>
+        <button class="tbtn" data-v="rnd" onclick="setSetting('order','rnd',this)">랜덤</button>
       </div>
     </div>
-    <div class="input-area" id="inputArea">
-      <textarea class="answer-input" id="answerInput" rows="2" placeholder="정답을 입력하세요... (Enter로 제출)" onkeydown="handleKey(event)"></textarea>
-      <div class="btn-row" id="actionBtns">
-        <button class="btn btn-primary" onclick="checkAnswer()">정답 확인</button>
-        <button class="btn btn-secondary" onclick="showHint()">💡 힌트</button>
-        <button class="btn btn-secondary" onclick="skipCard()">건너뛰기 →</button>
-      </div>
-      <div class="btn-row" id="nextBtns" style="display:none">
-        <button class="btn btn-gold" onclick="nextCard()">다음 카드 →</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- RESULT -->
-  <div class="screen" id="resultScreen">
-    <div class="result-screen">
-      <div class="result-header">
-        <h2 id="resultEmoji">🎯</h2>
-        <h2 id="resultTitle">완료!</h2>
-        <p id="resultSub">Task A · 순서 모드</p>
-      </div>
-      <div class="stat-grid">
-        <div class="stat-card">
-          <span class="val" id="statCorrect">0</span>
-          <div class="lbl">정답</div>
-        </div>
-        <div class="stat-card">
-          <span class="val" id="statWrong">0</span>
-          <div class="lbl">오답</div>
-        </div>
-        <div class="stat-card">
-          <span class="val" id="statRate">0%</span>
-          <div class="lbl">정확도</div>
-        </div>
-      </div>
-      <div class="wrong-list" id="wrongList" style="display:none">
-        <h4>오답 목록</h4>
-        <div id="wrongItems"></div>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:10px;">
-        <button class="btn btn-gold" id="retryWrongBtn" onclick="retryWrong()" style="display:none">오답만 다시 풀기</button>
-        <button class="btn btn-primary" onclick="retryAll()">전체 다시 풀기</button>
-        <button class="btn btn-secondary" onclick="goHome()">메인으로</button>
+    <div class="srow">
+      <div><div class="slabel">오답 재출제</div><div class="ssub">틀린 카드 자동 재시도</div></div>
+      <div class="tgroup" id="rg">
+        <button class="tbtn on gold" data-v="on" onclick="setSetting('retry','on',this)">ON</button>
+        <button class="tbtn" data-v="off" onclick="setSetting('retry','off',this)">OFF</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- ══════════ QUIZ ══════════ -->
+<div class="screen" id="quizScreen">
+  <div class="qheader">
+    <button class="backbtn" onclick="goHome()">←</button>
+    <div class="pinfo"><span class="cur" id="pCur">1</span> / <span id="pTot">1</span></div>
+    <span class="mbadge" id="mBadge">순서</span>
+  </div>
+  <div class="pbar-wrap"><div class="pbar-fill" id="pBar" style="width:0%"></div></div>
+  <div class="card" id="qCard">
+    <div class="cmeta">
+      <span class="ctype ct-a" id="cTypeBadge">Template</span>
+      <span class="csec" id="cSec">서론</span>
+      <button class="bmkbtn" id="bmkBtn" onclick="toggleBmk()">☆</button>
+    </div>
+    <div class="cq" id="cQ"></div>
+    <div class="cprompt" id="cPrompt"></div>
+    <div class="tip-box" id="tipBox" style="display:none"></div>
+    <div class="hint-txt" id="hintTxt"></div>
+    <div class="fb" id="fb"><div class="fb-lbl" id="fbLbl"></div><div class="fb-txt" id="fbTxt"></div></div>
+    <!-- TTS bar: shown after answer revealed -->
+    <div class="tts-bar" id="ttsBar" style="display:none">
+      <button class="tts-btn" id="ttsPlayBtn" onclick="ttsToggle()" title="문장 읽기">▶</button>
+      <span class="tts-label" id="ttsLabel">정답 문장 듣기</span>
+      <div class="tts-speed">
+        <button onclick="setTtsRate(0.75,this)">0.75×</button>
+        <button class="on" onclick="setTtsRate(1,this)">1×</button>
+        <button onclick="setTtsRate(1.25,this)">1.25×</button>
+      </div>
+    </div>
+  <div class="iarea">
+    <textarea class="ainput" id="aInp" rows="2" placeholder="정답 입력... (Enter 제출, Shift+Enter 줄바꿈)" onkeydown="handleKey(event)"></textarea>
+    <div class="brow" id="aBtns">
+      <button class="btn btn-pri" onclick="checkAns()">✓ 정답 확인</button>
+      <button class="btn btn-sec" onclick="showHint()">💡 힌트</button>
+      <button class="btn btn-sec" onclick="skipCard()">건너뛰기 →</button>
+    </div>
+    <div class="brow" id="nBtns" style="display:none">
+      <button class="btn btn-gold" onclick="nextCard()">다음 카드 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ RESULT ══════════ -->
+<div class="screen" id="resultScreen">
+  <div class="result">
+    <div><h1 id="rEmoji">🎯</h1><h1 id="rTitle" style="font-size:28px;font-family:'Playfair Display',serif">완료!</h1><p class="rsub" id="rSub"></p></div>
+    <div class="sgrid">
+      <div class="scard"><span class="sv" id="sOk">0</span><div class="sk">정답</div></div>
+      <div class="scard"><span class="sv" id="sNg">0</span><div class="sk">오답</div></div>
+      <div class="scard"><span class="sv" id="sRate">0%</span><div class="sk">정확도</div></div>
+    </div>
+    <div class="wlist" id="wList" style="display:none"><h4>오답 목록</h4><div id="wItems"></div></div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <button class="btn btn-gold" id="retryWBtn" onclick="retryWrong()" style="display:none">오답만 다시 풀기</button>
+      <button class="btn btn-pri" onclick="retryAll()">전체 다시 풀기</button>
+      <button class="btn btn-sec" onclick="goHome()">메인으로</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- .app -->
+
 <script>
-const TASK_A = [
-  { section:"[서론-도입]", type:"cloze", question:"주제를 단순한 이분법으로 보지 않고 복잡하게 얽혀 있다고 접근하는 만능 오프닝은?", prompt:"The question of [Space Exploration] is often framed as a simple [[___]], yet reality suggests a far more intricate [[___]].", blanks:["dichotomy","tapestry"], answer:"dichotomy / tapestry", fullSentence:"The question of Space Exploration is often framed as a simple dichotomy (Scientific Progress vs. Waste of Resources), yet reality suggests a far more intricate tapestry.", hint:"이분법 / 복잡한 직물" },
-  { section:"[서론-배경]", type:"cloze", question:"이 논쟁이 진공 상태가 아니라 사회정치적 맥락 속에 있음을 짚어주는 문장은?", prompt:"This debate is not occurring in [[___]]; it is deeply [[___]] in the socio-political context of extreme global poverty and climate crisis.", blanks:["a vacuum","embedded"], answer:"a vacuum / embedded", fullSentence:"This debate is not occurring in a vacuum; it is deeply embedded in the socio-political context of extreme global poverty and climate crisis.", hint:"진공 / 깊이 내재된" },
-  { section:"[서론-주장]", type:"cloze", question:"이 주제가 양날의 검으로 작용한다는 메인 주장 문장에서 빈칸을 채우세요.", prompt:"Strict adherence to unbridled interstellar ambition acts as a [[___]], offering technological hope while simultaneously threatening [[___]].", blanks:["double-edged sword","ethical negligence"], answer:"double-edged sword / ethical negligence", fullSentence:"Strict adherence to unbridled interstellar ambition acts as a double-edged sword, offering technological hope while simultaneously threatening ethical negligence.", hint:"양날의 검 / 윤리적 무관심" },
-  { section:"[본론1-도입]", type:"structure", question:"역사가 심리적 패턴을 반복한다는 본론1 만능 시작 문장 — 핵심 개념어는?", prompt:"Central to this understanding is the concept that history often [[___]] its psychological patterns. History provides a [[___]] lesson in the form of the Industrial Revolution.", blanks:["repeats","salutary"], answer:"repeats / salutary", fullSentence:"Central to this understanding is the concept that history often repeats its psychological patterns. History provides a salutary lesson in the form of the Industrial Revolution.", hint:"반복하다 / 교훈적인, 유익한" },
-  { section:"[본론1-예시]", type:"cloze", question:"산업혁명 당시 효율성 추구가 인간을 '기계의 톱니바퀴'로 전락시켰다는 문장의 핵심 표현은?", prompt:"The relentless pursuit of efficiency reduced human workers to mere \"[[___]].\" The grim reality was characterized by dehumanizing conditions such as [[___]].", blanks:["cogs in a machine","child labor"], answer:"cogs in a machine / child labor", fullSentence:"The relentless pursuit of efficiency reduced human workers to mere 'cogs in a machine.' The grim reality was characterized by dehumanizing conditions such as child labor.", hint:"기계의 톱니바퀴 / 아동노동" },
-  { section:"[본론1-분석]", type:"cloze", question:"공장이 폐기물을 만들듯 불평등한 사회가 '소외된 자들'을 만든다는 비유 문장의 핵심은?", prompt:"Just as factories produced [[___]], our unequal society manufactures [[___]].", blanks:["industrial waste","the left-behind"], answer:"industrial waste / the left-behind", fullSentence:"Just as factories produced industrial waste, our unequal society manufactures 'the left-behind'.", hint:"산업 폐기물 / 뒤처진 자들" },
-  { section:"[본론1-소결론]", type:"paraphrase", question:"'broken cogs'와 'broken machine' 비유로 피상적 해결책을 비판하는 문장의 핵심 논리는?", prompt:"By focusing only on Mars colonization, we are merely discarding the [[___]] while ignoring the [[___]] that created them.", blanks:["broken cogs","broken machine"], answer:"broken cogs / broken machine", fullSentence:"By focusing only on Mars colonization, we are merely discarding the 'broken cogs' while ignoring the 'broken machine' that created them.", hint:"망가진 톱니바퀴 / 망가진 기계" },
-  { section:"[본론2-반론 수용]", type:"cloze", question:"회의론자들의 주장을 수용하며 지적으로 정직한 태도를 보여주는 핵심 어구는?", prompt:"Admittedly, skeptics might argue that space technology ultimately benefits Earth. It would be [[___]] to dismiss innovations like GPS.", blanks:["intellectually dishonest"], answer:"intellectually dishonest", fullSentence:"Admittedly, skeptics might argue that space technology ultimately benefits Earth, and there is some validity to this claim. It would be intellectually dishonest to dismiss innovations like GPS.", hint:"지적으로 정직하지 않은" },
-  { section:"[본론2-존 롤스 1]", type:"structure", question:"반론을 뒤집으며 롤스의 '무지의 베일'을 끌어오는 두 핵심 개념은?", prompt:"This argument ignores '[[___]]'. John Rawls' '[[___]]' demands that we design rules without knowing our own status.", blanks:["the arbitrariness of fortune","Veil of Ignorance"], answer:"the arbitrariness of fortune / Veil of Ignorance", fullSentence:"This argument ignores 'the arbitrariness of fortune'. John Rawls' 'Veil of Ignorance' demands that we design rules without knowing our own status.", hint:"운의 자의성 / 무지의 베일" },
-  { section:"[본론2-존 롤스 2]", type:"cloze", question:"합리적 행위자라면 최소 수혜자에게 혜택이 없는 구조를 지지하지 않는다는 문장의 핵심은?", prompt:"No rational agent would endorse a structure where [[___]], violating the principle that [[___]].", blanks:["survival is a luxury reserved for the wealthy","progress must primarily benefit the least advantaged"], answer:"survival is a luxury / least advantaged", fullSentence:"No rational agent would endorse a structure where survival is a luxury reserved for the wealthy, violating the principle that progress must primarily benefit the least advantaged.", hint:"생존이 부유층의 사치 / 최소 수혜자에게 이익" },
-  { section:"[본론2-소결론]", type:"structure", question:"진정한 정의는 '윤리적 순서(ethical sequencing)'의 문제라는 핵심 문장은?", prompt:"True justice is not about abandoning science, but about [[___]]. Progress in the stars must be tethered to [[___]].", blanks:["ethical sequencing","equity on the soil"], answer:"ethical sequencing / equity on the soil", fullSentence:"True justice is not about abandoning science, but about ethical sequencing. It is about fixing the 'lottery' so that progress in the stars is tethered to equity on the soil.", hint:"윤리적 순서 / 지구의 형평성" },
-  { section:"[본론2-펀치라인]", type:"paraphrase", question:"지구를 방치하며 화성을 우선시하는 것은 비전이 아니라 무엇이라고 비판하는가?", prompt:"Prioritizing the colonization of Mars while Earth burns is not 'visionary'; it is a [[___]].", blanks:["profound moral abdication"], answer:"profound moral abdication", fullSentence:"Prioritizing the colonization of Mars while Earth burns is not 'visionary'; it is a profound moral abdication.", hint:"심각한 도덕적 직무유기" },
-  { section:"[결론-요약]", type:"structure", question:"하늘을 우러러보는 것이 고통받는 자를 내려보는 것을 의미하지 않는 사회를 만들자 — 핵심 대비는?", prompt:"We must strive to create a society where [[___]] does not imply [[___]].", blanks:["looking up at the heavens","looking down on the suffering"], answer:"looking up at the heavens / looking down on the suffering", fullSentence:"We must strive to create a society where looking up at the heavens does not imply looking down on the suffering.", hint:"하늘을 우러러보는 것 / 고통받는 자를 내려보는 것" },
-  { section:"[결론-최종 통찰]", type:"paraphrase", question:"별에 갈 자격이 있는 문명은 먼저 자기 집(지구)부터 돌봐야 한다 — 핵심 프레이밍은?", prompt:"The question is not '[[___]]', but [[___]]. A civilization worthy of the stars must first prove it can [[___]].", blanks:["can we reach Mars?","whether we deserve to go","tend to its own home"], answer:"can we reach Mars? / whether we deserve to go / tend to its own home", fullSentence:"The question is not simply 'can we reach Mars?', but whether we deserve to go. A civilization worthy of the stars must first prove it can tend to its own home.", hint:"갈 수 있나? → 자격이 있나? / 자기 집을 돌보다" }
+// ═══════════════════════════════════════════════════════
+//  TASK A — 범용 S2 템플릿 (🔴 슬롯 인출)
+// ═══════════════════════════════════════════════════════
+const DECK_A = [
+  // ── 서론 ──
+  {
+    section:"서론 ①",
+    q:"주제를 단순 이분법으로 가둬두지 않는 오프닝 — TOPIC, A/B 대립, 핵심 tension은?",
+    prompt:"The question of 🔴[TOPIC] is often framed as a simple dichotomy (🔴[A] vs. 🔴[B]), yet this binary obscures a more fundamental 【___】.",
+    blanks:["tension"],
+    answer:"tension",
+    full:"The question of [TOPIC] is often framed as a simple dichotomy ([A] vs. [B]), yet this binary obscures a more fundamental tension.",
+    hint:"단순 이분법이 가리는 것 → t____n"
+  },
+  {
+    section:"서론 ②",
+    q:"이 논쟁이 사회정치적 맥락 속에 깊이 박혀 있음을 보여주는 배경 문장은?",
+    prompt:"This debate does not exist in 【___】; it is deeply 【___】 in the socio-political reality of 🔴[CONTEXT].",
+    blanks:["isolation","embedded"],
+    answer:"isolation / embedded",
+    full:"This debate does not exist in isolation; it is deeply embedded in the socio-political reality of [CONTEXT].",
+    hint:"고립 / 내재된"
+  },
+  {
+    section:"서론 ③",
+    q:"주제가 양날의 검임을 드러내는 thesis — 표면적 이득과 심층적 해악의 역설은?",
+    prompt:"Unchecked commitment to 🔴[POLICY] carries an 【___】 paradox — it may 🔴[SURFACE BENEFIT] while quietly 🔴[DEEP HARM].",
+    blanks:["uncomfortable"],
+    answer:"uncomfortable",
+    full:"Unchecked commitment to [POLICY] carries an uncomfortable paradox — it may [SURFACE BENEFIT] while quietly [DEEP HARM].",
+    hint:"'불편한 역설' — u__________e"
+  },
+  {
+    section:"서론 ④",
+    q:"The central question 프레임 — 가치 여부가 아니라 더 깊은 의무 앞에서 정당화될 수 있는가?",
+    prompt:"The central question, then, is not whether 🔴[TOPIC] has value, but whether it can be 【___】 before 🔴[DEEPER OBLIGATION] is met.",
+    blanks:["justified"],
+    answer:"justified",
+    full:"The central question, then, is not whether [TOPIC] has value, but whether it can be justified before [DEEPER OBLIGATION] is met.",
+    hint:"정당화될 수 있는가 — j________d"
+  },
+
+  // ── 본론 1 ──
+  {
+    section:"본론1 ①",
+    q:"시스템적 문제는 시스템적 해결책이 필요하다 — 본론1 시작 문장 + 산업혁명 도입은?",
+    prompt:"Central to this issue is the recognition that 【___】 problems demand 【___】 solutions. History offers an uncomfortable mirror in the form of the Industrial Revolution.",
+    blanks:["systemic","systemic"],
+    answer:"systemic / systemic",
+    full:"Central to this issue is the recognition that systemic problems demand systemic solutions. History offers an uncomfortable mirror in the form of the Industrial Revolution.",
+    hint:"구조적/시스템적 — s______c"
+  },
+  {
+    section:"본론1 ②",
+    q:"산업혁명 당시 효율 추구가 인간을 '톱니바퀴'로 만들었다 — 빈칸 표현은?",
+    prompt:"The relentless pursuit of 🔴[PARALLEL] reduced human workers to mere 【___】 — expendable, invisible, replaceable.",
+    blanks:["cogs in a machine"],
+    answer:"cogs in a machine",
+    full:"The relentless pursuit of [PARALLEL] reduced human workers to mere 'cogs in a machine' — expendable, invisible, replaceable.",
+    hint:"기계의 톱니바퀴 — c___ in a m_____e"
+  },
+  {
+    section:"본론1 ③",
+    q:"역사적 패턴이 오늘날 반복된다 — '현대 피해자'를 생산하는 비유 문장은?",
+    prompt:"Just as industrialisation produced human waste alongside material wealth, our current system 【___】 🔴[MODERN VICTIMS].",
+    blanks:["manufactures"],
+    answer:"manufactures",
+    full:"Just as industrialisation produced human waste alongside material wealth, our current system manufactures [MODERN VICTIMS].",
+    hint:"생산/양산하다 — m___________s"
+  },
+  {
+    section:"본론1 ④ — 🔑 Punchline",
+    q:"'broken cogs vs. broken machine' 비유로 피상적 해결책을 비판하는 소결론 + 펀치라인은?",
+    prompt:"By focusing solely on 🔴[SUPERFICIAL SOLUTION], we discard the '【___】' (victims) while leaving intact the '【___】' (root cause) that created them.\n🔴[PUNCHLINE: Treating X while ignoring Y is not Z — it is DAMNING REFRAME.]",
+    blanks:["broken cogs","broken machine"],
+    answer:"broken cogs / broken machine",
+    full:"By focusing solely on [SUPERFICIAL SOLUTION], we discard the 'broken cogs' while leaving intact the 'broken machine' that created them.",
+    hint:"망가진 톱니바퀴 / 망가진 기계"
+  },
+
+  // ── 본론 2 ──
+  {
+    section:"본론2 ①",
+    q:"반론을 수용하면서도 지적 정직성을 강조하는 양보 문장 — 핵심 어구는?",
+    prompt:"Admittedly, proponents argue that 🔴[COUNTER], and there is some validity to this claim. It would be 【___】 to dismiss 🔴[GENUINE BENEFIT] entirely.",
+    blanks:["intellectually dishonest"],
+    answer:"intellectually dishonest",
+    full:"Admittedly, proponents argue that [COUNTER], and there is some validity to this claim. It would be intellectually dishonest to dismiss [GENUINE BENEFIT] entirely.",
+    hint:"지적으로 부정직한 — i__________ly d______t"
+  },
+  {
+    section:"본론2 ②",
+    q:"롤스의 '무지의 베일' — 어떤 조건 하에서 어떤 구조를 지지하지 않을 것인가?",
+    prompt:"John Rawls' 【___】 demands that just institutions be designed without knowledge of one's own position in society. Under this constraint, no rational agent would endorse a structure where 🔴[UNCONTROLLABLE FACTOR] predetermines 🔴[LIFE OUTCOME], effectively 【___】 inequality as policy.",
+    blanks:["Veil of Ignorance","codifying"],
+    answer:"Veil of Ignorance / codifying",
+    full:"John Rawls' Veil of Ignorance demands that just institutions be designed without knowledge of one's own position. No rational agent would endorse a structure that effectively codifies inequality as policy.",
+    hint:"무지의 베일 / 법제화하다 — c______g"
+  },
+  {
+    section:"본론2 ③ — 🔑 Punchline",
+    q:"'운의 자의성'과 '국가 승인 잔혹성' — 본론2 최종 펀치라인 두 문장은?",
+    prompt:"True justice is not merely about 🔴[SUPERFICIAL ACTION] — it is about ensuring that 🔴[UNCONTROLLABLE FACTOR] does not 【___】 🔴[OUTCOME].\nTo 🔴[BLAME] those with no power to choose otherwise is not justice — it is 【___】.",
+    blanks:["dictate","state-sanctioned cruelty"],
+    answer:"dictate / state-sanctioned cruelty",
+    full:"True justice ensures that [UNCONTROLLABLE FACTOR] does not dictate [OUTCOME]. To [BLAME] those with no power to choose otherwise is not justice — it is state-sanctioned cruelty.",
+    hint:"결정짓다 / 국가 승인 잔혹성 — s_________d c_____y"
+  },
+
+  // ── 결론 ──
+  {
+    section:"결론 ①",
+    q:"이 담론이 우리의 집단적 가치를 반영한다 — 정의로운 사회의 진짜 척도는?",
+    prompt:"In the final analysis, the discourse surrounding 🔴[TOPIC] is a reflection of our 【___】 values. A just society is not measured by 🔴[SUPERFICIAL METRIC], but by how it treats those with the 【___】 to shape it.",
+    blanks:["collective","least power"],
+    answer:"collective / least power",
+    full:"In the final analysis, the discourse surrounding [TOPIC] is a reflection of our collective values. A just society is not measured by [SUPERFICIAL METRIC], but by how it treats those with the least power to shape it.",
+    hint:"집단적 / 가장 적은 권력"
+  },
+  {
+    section:"결론 ② — 🔑 최종 통찰",
+    q:"Wrong Question → Right Question 프레임 전환 — 결론 마무리 문장은?",
+    prompt:"The question is not '🔴[WRONG QUESTION]?' but '🔴[RIGHT QUESTION]?' Until we answer the latter with 【___】, the former remains a 【___】.",
+    blanks:["conviction","moral distraction"],
+    answer:"conviction / moral distraction",
+    full:"The question is not '[WRONG QUESTION]?' but '[RIGHT QUESTION]?' Until we answer the latter with conviction, the former remains a moral distraction.",
+    hint:"확신 / 도덕적 산만함 — m___l d_________n"
+  }
 ];
 
-const TASK_B = [
-  { section:"[서론-Hook]", type:"cloze", question:"책임감에 대한 나의 '과거의 착각'은? 어떻게 상상했나?", prompt:"I used to imagine it as something [[___]]—an attribute worn proudly by [[___]] adults.", blanks:["noble","competent"], answer:"noble / competent", fullSentence:"I used to imagine it as something noble—an attribute worn proudly by competent adults.", hint:"고귀한 / 유능한" },
-  { section:"[서론-Thesis]", type:"cloze", question:"책임감의 '진짜 속성' 3가지 — 빈칸을 채우세요.", prompt:"Responsibility often arrives [[___]], at [[___]] hours, and rarely feels [[___]] at all.", blanks:["quietly","inconvenient","noble"], answer:"quietly / inconvenient / noble", fullSentence:"Only later did I realise that Responsibility often arrives quietly, at inconvenient hours, and rarely feels noble at all.", hint:"조용히 / 불편한 / 고귀하게" },
-  { section:"[본론1-사건]", type:"cloze", question:"새벽 2시 서버 장애가 터졌을 때 나의 '솔직한 감정' 두 단어는?", prompt:"I did not feel [[___]]. I felt [[___]]. \"Why must I sacrifice my future for a machine?\"", blanks:["admirable","resentful"], answer:"admirable / resentful", fullSentence:"I did not feel admirable. I felt resentful. 'Why must I sacrifice my future for a machine?'", hint:"존경스러운 / 원망스러운" },
-  { section:"[본론1-갈등]", type:"paraphrase", question:"아무도 모를 거라는 유혹을 박살 낸 한 문장을 완성하세요.", prompt:"No one would know that I hesitated. But [[___]].", blanks:["I would know"], answer:"I would know", fullSentence:"No one would know that I hesitated. But I would know.", hint:"나는 알 것이다" },
-  { section:"[본론2-깨달음]", type:"structure", question:"책임감은 남이 볼 때가 아니라 언제에 관한 것인가?", prompt:"Responsibility is rarely about being [[___]]. It is about who we choose to be when we are [[___]].", blanks:["watched","not"], answer:"watched / not (watched)", fullSentence:"Responsibility, I realised, is rarely about being watched. It is about who we choose to be when we are not.", hint:"지켜볼 때 / 지켜보지 않을 때" },
-  { section:"[본론2-진짜 장애물]", type:"cloze", question:"차가운 서버실에서 깨달은 '진짜 극복 대상'은? (서버가 아니라...)", prompt:"The server was not the true obstacle. My [[___]] was.", blanks:["bitterness"], answer:"bitterness", fullSentence:"The server was not the true obstacle. My bitterness was.", hint:"쓴 마음, 원한, 씁쓸함" },
-  { section:"[본론2-재정의]", type:"paraphrase", question:"책임감을 '가치관과의 정렬'로 재정의하는 문장은?", prompt:"It is the repeated, often [[___]] choice to act in [[___]] with our values, even when it costs us [[___]].", blanks:["thankless","alignment","comfort"], answer:"thankless / alignment / comfort", fullSentence:"It is the repeated, often thankless choice to act in alignment with our values, even when it costs us comfort.", hint:"감사 없는 / 정렬 / 편안함" },
-  { section:"[결론-의사 연결]", type:"structure", question:"새벽 3시 서버 장애를 미래의 의사 생활과 연결하는 브릿지 문장은?", prompt:"Perhaps one day it will not be a [[___]] but a [[___]] who wakes me at [[___]] AM.", blanks:["server","patient","3"], answer:"server / patient / 3", fullSentence:"Perhaps one day it will not be a server but a patient who wakes me at 3 AM.", hint:"서버 → 환자 / 새벽 3시" },
-  { section:"[결론-태도]", type:"cloze", question:"미래에 환자가 나를 깨울 때도 느낄 솔직한 감정 두 가지는?", prompt:"I suspect I may feel the same flicker of [[___]], the same tired [[___]]. But I hope I will remember that night.", blanks:["resentment","resistance"], answer:"resentment / resistance", fullSentence:"I suspect I may feel the same flicker of resentment, the same tired resistance. But I hope I will remember that night.", hint:"원한/분노 / 저항감" },
-  { section:"[결론-최종 통찰]", type:"paraphrase", question:"책임감은 시간을 잃는 것이 아니라 무엇이라고 결론 짓는가?", prompt:"Responsibility is not about [[___]]. It is about [[___]] the person who stands in that time.", blanks:["losing time","shaping"], answer:"losing time / shaping", fullSentence:"In the end, Responsibility is not about losing time. It is about shaping the person who stands in that time.", hint:"시간을 잃는 것 / 그 시간에 서 있는 사람을 빚어내는 것" }
+// ═══════════════════════════════════════════════════════
+//  TASK B — Responsibility 에세이 (키워드 빈칸)
+// ═══════════════════════════════════════════════════════
+const DECK_B = [
+  // ── 서론 ──
+  {
+    section:"서론 — Re-definition ①",
+    q:"책임감의 '과거 착각' — noble + competent 조합으로 상상했다는 오프닝은?",
+    prompt:"Reflecting on the theme of Responsibility, I once imagined it as something 【___】 — an attribute worn proudly by those who had already become who they 【___】 to be.",
+    blanks:["noble","wanted"],
+    answer:"noble / wanted",
+    full:"Reflecting on the theme of Responsibility, I once imagined it as something noble — an attribute worn proudly by those who had already become who they wanted to be.",
+    hint:"고귀한 / wanted to be",
+    tip:"오프닝에서 '착각'을 먼저 설정해야 나중 반전이 살아난다."
+  },
+  {
+    section:"서론 — Re-definition ②",
+    q:"책임감이 실제로 어떻게 나타나는가 — 3가지 속성으로 재정의하는 thesis는?",
+    prompt:"Only later did I understand that Responsibility rarely 【___】 itself with dignity. It arrives at 【___】 hours, in 【___】 forms, and asks something of us before we feel ready to give it.",
+    blanks:["announces","inconvenient","unglamorous"],
+    answer:"announces / inconvenient / unglamorous",
+    full:"Only later did I understand that Responsibility rarely announces itself with dignity. It arrives at inconvenient hours, in unglamorous forms, and asks something of us before we feel ready to give it.",
+    hint:"알리다 / 불편한 / 화려하지 않은",
+    tip:"마지막 'asks something of us before we feel ready' 로 끝내 — 독자가 다음 이야기를 기대하게 만드는 훅."
+  },
+
+  // ── 본론 1 ──
+  {
+    section:"본론1 — Incident ①",
+    q:"새벽 서버 장애의 풍경 — 교과서, 알림음, 도시의 침묵으로 긴장감 설정하는 문장들은?",
+    prompt:"One night, while preparing for the GAMSAT, a critical server failure struck at 【___】 AM. My textbooks lay open across the desk, dense with notes that promised a 【___】 future. The alert cut through the silence of my apartment like an 【___】.",
+    blanks:["1","different","accusation"],
+    answer:"1 AM / different future / accusation",
+    full:"One night, while preparing for the GAMSAT, a critical server failure struck at 1 AM. My textbooks lay open across the desk, dense with notes that promised a different future. The alert cut through the silence of my apartment like an accusation.",
+    hint:"새벽 1시 / 다른 미래 / 고발(비유)",
+    tip:"'like an accusation' — 알림음을 고발로 표현. 이런 비유가 70+ 만들어주는 문장."
+  },
+  {
+    section:"본론1 — Incident ②",
+    q:"솔직한 감정 토로 + 'But I would know' 반전 — 가장 짧고 강한 두 문장은?",
+    prompt:"I did not feel 【___】. I felt 【___】. "Why now? Why must I sacrifice my future for a machine?"\nI considered ignoring the alert. No one would know that I hesitated.\n【___】.",
+    blanks:["admirable","resentful","But I would know"],
+    answer:"admirable / resentful / But I would know",
+    full:"I did not feel admirable. I felt resentful. 'Why now? Why must I sacrifice my future for a machine?' No one would know that I hesitated. But I would know.",
+    hint:"존경스러운 / 분개한 / But I would know",
+    tip:"'But I would know.' 를 반드시 단독 문장으로 분리. 짧은 문장이 긴 단락보다 채점관 기억에 훨씬 강하게 남는다."
+  },
+
+  // ── 본론 2 ──
+  {
+    section:"본론2 — Struggle ①",
+    q:"'감시받지 않을 때 우리가 누구인지'가 책임감의 본질 — 핵심 통찰 문장은?",
+    prompt:"Responsibility, I was beginning to understand, is rarely about being 【___】. It is about who we choose to be when 【___】.",
+    blanks:["watched","no one is"],
+    answer:"watched / no one is",
+    full:"Responsibility, I was beginning to understand, is rarely about being watched. It is about who we choose to be when no one is.",
+    hint:"지켜볼 때가 아니라 / 아무도 없을 때",
+    tip:"이 문장이 에세이 전체의 핵심 정의. 외울 것."
+  },
+  {
+    section:"본론2 — Struggle ②",
+    q:"진짜 장애물은 서버가 아니라 내 쓴 마음이었다 — 반전 두 문장은?",
+    prompt:"The task itself was mechanical, almost 【___】. Yet beneath it ran a quieter struggle — the decision to show up despite 【___】.\nThe server was not the true obstacle. My 【___】 was.",
+    blanks:["mundane","resentment","bitterness"],
+    answer:"mundane / resentment / bitterness",
+    full:"The task itself was mechanical, almost mundane. Yet beneath it ran a quieter struggle — the decision to show up despite resentment. The server was not the true obstacle. My bitterness was.",
+    hint:"평범한 / 분개 / 쓴 마음",
+    tip:"'The server was not the true obstacle. My bitterness was.' — 이 반전 구조가 70+의 핵심."
+  },
+  {
+    section:"본론2 — Realisation",
+    q:"책임감의 재정의 — '거창한 희생'이 아니라 '반복적이고 감사받지 못하는 선택'이란 문장은?",
+    prompt:"Responsibility is not the grand 【___】 we imagine. It is the repeated, often 【___】 choice to act in 【___】 with our values, even when it costs us comfort.",
+    blanks:["sacrifice","thankless","alignment"],
+    answer:"sacrifice / thankless / alignment",
+    full:"Responsibility, I realised, is not the grand sacrifice we imagine. It is the repeated, often thankless choice to act in alignment with our values, even when it costs us comfort.",
+    hint:"희생 / 감사 없는 / 정렬"
+  },
+
+  // ── 결론 ──
+  {
+    section:"결론 — Doctor Link",
+    q:"서버 장애를 미래의 의사 생활로 연결하는 브릿지 + 같은 감정이 돌아올 것이라는 솔직한 인정은?",
+    prompt:"Perhaps one day it will not be a 【___】 but a 【___】 who wakes me at 3 AM. I do not know whether I will feel ready. I suspect I may feel the same flicker of 【___】, the same tired 【___】.",
+    blanks:["server","patient","resentment","resistance"],
+    answer:"server / patient / resentment / resistance",
+    full:"Perhaps one day it will not be a server but a patient who wakes me at 3 AM. I do not know whether I will feel ready. I suspect I may feel the same flicker of resentment, the same tired resistance.",
+    hint:"서버 → 환자 / 분노 / 저항감",
+    tip:"반드시 의사 연결고리를 넣어. 채점관이 '이 사람이 왜 의대를 가려는지' 자연스럽게 느껴야 한다."
+  },
+  {
+    section:"결론 — 최종 통찰",
+    q:"책임감은 시간을 잃는 것이 아니라 — 결론 마무리 두 문장은?",
+    prompt:"Responsibility is not measured in grand 【___】. It is built in the small moments when no one is watching, when the cost is real, and when we choose 【___】 over convenience regardless.\nIn the end, Responsibility is not about losing 【___】. It is about shaping the person who must stand in that 【___】.",
+    blanks:["gestures","integrity","time","time"],
+    answer:"gestures / integrity / time / time",
+    full:"Responsibility is not measured in grand gestures. It is built in the small moments when no one is watching, when the cost is real, and when we choose integrity over convenience regardless. In the end, Responsibility is not about losing time. It is about shaping the person who must stand in that time.",
+    hint:"제스처 / 무결성(integrity) / time / time",
+    tip:"'shaping the person who must stand in that time' — 에세이 전체를 마무리짓는 가장 강한 문장."
+  }
 ];
 
-let state = {
-  task: null, deck: [], queue: [], cursor: 0,
-  settings: { order:'sequential', direction:'forward', retry:'on' },
-  bookmarks: JSON.parse(localStorage.getItem('bm_s2') || '{}'),
-  wrongPool: [], correctCount: 0, wrongCount: 0, answered: false
+// ═══════════════════════════════════════════════════════
+//  STATE & SETTINGS
+// ═══════════════════════════════════════════════════════
+let S = {
+  task:null, deck:[], queue:[], cursor:0,
+  cfg: JSON.parse(localStorage.getItem('s2cfg')||'{"order":"seq","retry":"on"}'),
+  bm: JSON.parse(localStorage.getItem('s2bm')||'{}'),
+  wrong:[], ok:0, ng:0, answered:false
 };
 
-document.getElementById('countA').textContent = TASK_A.length + ' 문항';
-document.getElementById('countB').textContent = TASK_B.length + ' 문항';
+document.getElementById('cntA').textContent = DECK_A.length + ' 문항';
+document.getElementById('cntB').textContent = DECK_B.length + ' 문항';
 
-const saved = JSON.parse(localStorage.getItem('settings_s2') || '{}');
-if (saved.order) {
-  state.settings = { ...state.settings, ...saved };
-  ['orderToggle','dirToggle','retryToggle'].forEach(id => {
-    document.getElementById(id).querySelectorAll('.toggle-btn').forEach(b => {
-      const key = id === 'orderToggle' ? 'order' : id === 'dirToggle' ? 'direction' : 'retry';
-      b.classList.toggle('active', b.dataset.val === state.settings[key]);
-      if (id === 'retryToggle' && b.dataset.val === 'on') b.classList.toggle('gold', state.settings.retry === 'on');
-    });
-  });
+// restore settings UI
+document.querySelectorAll('#og .tbtn').forEach(b => b.classList.toggle('on', b.dataset.v === S.cfg.order));
+document.querySelectorAll('#rg .tbtn').forEach(b => {
+  b.classList.toggle('on', b.dataset.v === S.cfg.retry);
+  if(b.dataset.v==='on') b.classList.toggle('gold', S.cfg.retry==='on');
+});
+
+function setSetting(k, v, btn) {
+  S.cfg[k] = v;
+  btn.parentElement.querySelectorAll('.tbtn').forEach(b => b.classList.remove('on','gold'));
+  btn.classList.add('on');
+  if(k==='retry' && v==='on') btn.classList.add('gold');
+  localStorage.setItem('s2cfg', JSON.stringify(S.cfg));
 }
 
-function setSetting(key, val, btn) {
-  state.settings[key] = val;
-  btn.parentElement.querySelectorAll('.toggle-btn').forEach(b => {
-    b.classList.remove('active', 'gold');
-  });
-  btn.classList.add('active');
-  if (key === 'retry' && val === 'on') btn.classList.add('gold');
-  localStorage.setItem('settings_s2', JSON.stringify(state.settings));
+function shuffle(a) {
+  const r=[...a];
+  for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}
+  return r;
 }
 
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length-1; i > 0; i--) {
-    const j = Math.floor(Math.random()*(i+1));
-    [a[i],a[j]] = [a[j],a[i]];
-  }
-  return a;
-}
-
-function startTask(task, isRetry, retryDeck) {
-  state.task = task;
-  state.deck = retryDeck || (task === 'A' ? TASK_A : TASK_B);
-  state.wrongPool = []; state.correctCount = 0; state.wrongCount = 0; state.answered = false;
-  let indices = state.deck.map((_,i) => i);
-  if (state.settings.order === 'reverse') indices.reverse();
-  else if (state.settings.order === 'random') indices = shuffle(indices);
-  state.queue = indices; state.cursor = 0;
+// ═══════════════════════════════════════════════════════
+//  TASK START
+// ═══════════════════════════════════════════════════════
+function startTask(task, retryDeck) {
+  S.task = task;
+  S.deck = retryDeck || (task==='A' ? DECK_A : DECK_B);
+  S.wrong=[]; S.ok=0; S.ng=0; S.answered=false;
+  let idx = S.deck.map((_,i)=>i);
+  if(S.cfg.order==='rev') idx.reverse();
+  else if(S.cfg.order==='rnd') idx = shuffle(idx);
+  S.queue=idx; S.cursor=0;
   showScreen('quizScreen');
   loadCard();
 }
 
+// ═══════════════════════════════════════════════════════
+//  CARD LOAD
+// ═══════════════════════════════════════════════════════
 function loadCard() {
-  const idx = state.queue[state.cursor];
-  const card = state.deck[idx];
-  state.answered = false;
-  document.getElementById('progressCurrent').textContent = state.cursor + 1;
-  document.getElementById('progressTotal').textContent = state.queue.length;
-  document.getElementById('progressBar').style.width = (state.cursor / state.queue.length * 100) + '%';
-  const modeMap = { sequential:'순서', reverse:'역순', random:'랜덤' };
-  document.getElementById('modeBadge').textContent = 'Task ' + state.task + ' · ' + modeMap[state.settings.order];
-  const typeMap = { cloze:'Keyword Cloze', structure:'Structure Recall', paraphrase:'Paraphrase' };
-  const tb = document.getElementById('cardTypeBadge');
-  tb.textContent = typeMap[card.type];
-  tb.className = 'card-type-badge badge-' + card.type;
-  document.getElementById('cardSection').textContent = card.section;
-  const bk = state.bookmarks[state.task+'-'+idx];
-  const bb = document.getElementById('bookmarkBtn');
-  bb.textContent = bk ? '★' : '☆';
-  bb.classList.toggle('active', !!bk);
-  const q = document.getElementById('cardQuestion');
-  const qHtml = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">' + card.question + '</div>';
-  if (state.settings.direction === 'forward') {
-    q.innerHTML = qHtml + renderPrompt(card.prompt);
-  } else {
-    q.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">이 문장의 빈칸을 채우세요 <span style="color:var(--accent)">(힌트: ' + card.hint + ')</span></div>' + renderPrompt(card.prompt);
-  }
-  const fb = document.getElementById('feedback');
-  fb.className = 'feedback'; fb.style.display = 'none';
-  document.getElementById('hintText').className = 'hint-text';
-  const inp = document.getElementById('answerInput');
-  inp.value = ''; inp.className = 'answer-input'; inp.disabled = false;
-  document.getElementById('actionBtns').style.display = 'grid';
-  document.getElementById('nextBtns').style.display = 'none';
-  const cardEl = document.getElementById('quizCard');
-  cardEl.style.animation = 'none'; cardEl.offsetHeight; cardEl.style.animation = '';
+  const idx = S.queue[S.cursor];
+  const card = S.deck[idx];
+  S.answered = false;
+
+  document.getElementById('pCur').textContent = S.cursor+1;
+  document.getElementById('pTot').textContent = S.queue.length;
+  document.getElementById('pBar').style.width = (S.cursor/S.queue.length*100)+'%';
+  const ol = {seq:'순서',rev:'역순',rnd:'랜덤'};
+  document.getElementById('mBadge').textContent = 'Task '+S.task+' · '+ol[S.cfg.order];
+
+  // type badge
+  const tb = document.getElementById('cTypeBadge');
+  tb.className = 'ctype '+(S.task==='A'?'ct-a':'ct-b');
+  tb.textContent = S.task==='A' ? 'Template Slot' : 'Keyword Cloze';
+
+  document.getElementById('cSec').textContent = card.section;
+
+  // bookmark
+  const bk = S.bm[S.task+'-'+idx];
+  const bb = document.getElementById('bmkBtn');
+  bb.textContent = bk?'★':'☆'; bb.classList.toggle('on',!!bk);
+
+  // question
+  document.getElementById('cQ').textContent = card.q;
+
+  // prompt rendering
+  document.getElementById('cPrompt').innerHTML = renderPrompt(card.prompt, S.task);
+
+  // tip box
+  const tb2 = document.getElementById('tipBox');
+  if(card.tip){ tb2.style.display='block'; tb2.textContent='💡 '+card.tip; }
+  else { tb2.style.display='none'; }
+
+  // reset
+  hideTtsBar();
+  document.getElementById('hintTxt').className='hint-txt';
+  const fb = document.getElementById('fb');
+  fb.className='fb'; fb.style.display='none';
+  const inp = document.getElementById('aInp');
+  inp.value=''; inp.className='ainput'; inp.disabled=false;
+  document.getElementById('aBtns').style.display='grid';
+  document.getElementById('nBtns').style.display='none';
+
+  // re-animate
+  const c = document.getElementById('qCard');
+  c.style.animation='none'; c.offsetHeight; c.style.animation='';
   inp.focus();
 }
 
-function renderPrompt(prompt) {
-  return '<div style="font-size:15px;line-height:2.1;">' +
-    prompt.replace(/\[\[___\]\]/g, '<span class="blank">?</span>') + '</div>';
+function renderPrompt(text, task) {
+  const blankCls = task==='A' ? 'red-blank' : 'kw-blank';
+  // replace 【___】 with blank span
+  let html = text.replace(/【___】/g, `<span class="${blankCls}">?</span>`);
+  // highlight 🔴[...] slots in task A
+  html = html.replace(/🔴\[([^\]]+)\]/g, '<span style="color:#e06c75;font-family:\'DM Mono\',monospace;font-size:13px;opacity:.8">[$1]</span>');
+  // newlines
+  html = html.replace(/\n/g, '<br>');
+  return html;
 }
 
-function renderFilled(prompt, blanks, isCorrect) {
-  let i = 0;
-  const cls = isCorrect ? 'revealed' : 'wrong-reveal';
-  return '<div style="font-size:15px;line-height:2.1;">' +
-    prompt.replace(/\[\[___\]\]/g, () => '<span class="blank ' + cls + '">' + (blanks[i++]||'?') + '</span>') + '</div>';
+function renderFilled(text, blanks, correct, task) {
+  const cls = correct ? 'filled' : 'wrong';
+  const blankBase = task==='A' ? 'red-blank' : 'kw-blank';
+  let i=0;
+  let html = text.replace(/【___】/g, ()=>`<span class="${blankBase} ${cls}">${blanks[i++]||'?'}</span>`);
+  html = html.replace(/🔴\[([^\]]+)\]/g, '<span style="color:#e06c75;font-family:\'DM Mono\',monospace;font-size:13px;opacity:.8">[$1]</span>');
+  html = html.replace(/\n/g,'<br>');
+  return html;
 }
 
-function checkAnswer() {
-  if (state.answered) return;
-  const idx = state.queue[state.cursor];
-  const card = state.deck[idx];
-  const userAns = document.getElementById('answerInput').value.trim();
-  if (!userAns) { revealAnswer(card, false, true); return; }
+// ═══════════════════════════════════════════════════════
+//  ANSWER CHECK
+// ═══════════════════════════════════════════════════════
+function checkAns() {
+  if(S.answered) return;
+  const idx = S.queue[S.cursor];
+  const card = S.deck[idx];
+  const val = document.getElementById('aInp').value.trim();
+  if(!val){ reveal(card, false, true); return; }
   const norm = s => s.toLowerCase().replace(/['''""`\-]/g,'').replace(/\s+/g,' ').trim();
-  const allPresent = card.blanks.every(b => norm(userAns).includes(norm(b)));
-  revealAnswer(card, allPresent, false);
+  const ok = card.blanks.every(b => norm(val).includes(norm(b)));
+  reveal(card, ok, false);
 }
 
-function revealAnswer(card, isCorrect, skipped) {
-  state.answered = true;
-  const idx = state.queue[state.cursor];
-  if (!skipped) {
-    if (isCorrect) state.correctCount++;
-    else { state.wrongCount++; if (state.settings.retry === 'on') state.wrongPool.push(idx); }
-  } else { state.wrongCount++; state.wrongPool.push(idx); }
-  const inp = document.getElementById('answerInput');
-  inp.disabled = true;
-  if (!skipped) inp.className = 'answer-input ' + (isCorrect ? 'correct' : 'incorrect');
-  const q = document.getElementById('cardQuestion');
-  const qHtml = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">' + card.question + '</div>';
-  if (!skipped) q.innerHTML = qHtml + renderFilled(card.prompt, card.blanks, isCorrect);
-  const fb = document.getElementById('feedback');
-  fb.className = 'feedback show ' + (isCorrect && !skipped ? 'correct-fb' : 'wrong-fb');
-  fb.style.display = 'block';
-  let hl = card.fullSentence;
-  card.blanks.forEach(b => {
-    hl = hl.replace(new RegExp('(' + b.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi'), '<span class="highlight">$1</span>');
+function reveal(card, ok, skipped) {
+  S.answered = true;
+  const idx = S.queue[S.cursor];
+  if(!skipped){
+    if(ok) S.ok++;
+    else { S.ng++; if(S.cfg.retry==='on') S.wrong.push(idx); }
+  } else { S.ng++; S.wrong.push(idx); }
+
+  const inp = document.getElementById('aInp');
+  inp.disabled=true;
+  if(!skipped) inp.className='ainput '+(ok?'ok':'ng');
+
+  // re-render prompt with filled blanks
+  if(!skipped) {
+    document.getElementById('cPrompt').innerHTML =
+      renderFilled(card.prompt, card.blanks, ok, S.task);
+  }
+
+  // feedback
+  let hl = card.full;
+  card.blanks.forEach(b=>{
+    hl = hl.replace(new RegExp('('+b.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),
+      '<span class="hl">$1</span>');
   });
-  document.getElementById('feedbackText').innerHTML =
-    '<div class="answer-label">' + (skipped ? '건너뜀' : isCorrect ? '✓ 정답!' : '✗ 오답') + '</div>' +
-    '<div class="answer-text">' + hl + '</div>';
-  document.getElementById('actionBtns').style.display = 'none';
-  document.getElementById('nextBtns').style.display = 'grid';
+  document.getElementById('fbLbl').textContent = skipped ? '건너뜀' : ok ? '✓ 정답!' : '✗ 오답';
+  document.getElementById('fbTxt').innerHTML = hl;
+  const fb = document.getElementById('fb');
+  fb.className = 'fb show '+(ok&&!skipped?'ok-fb':'ng-fb');
+  fb.style.display='block';
+
+  document.getElementById('aBtns').style.display='none';
+  document.getElementById('nBtns').style.display='grid';
+
+  // TTS: read full sentence aloud
+  showTtsBar(hl);
 }
 
 function showHint() {
-  const card = state.deck[state.queue[state.cursor]];
-  const h = document.getElementById('hintText');
+  const card = S.deck[S.queue[S.cursor]];
+  const h = document.getElementById('hintTxt');
   h.textContent = '💡 ' + card.hint;
-  h.className = 'hint-text show';
+  h.className = 'hint-txt show';
 }
 
-function skipCard() {
-  revealAnswer(state.deck[state.queue[state.cursor]], false, true);
-}
+function skipCard() { reveal(S.deck[S.queue[S.cursor]], false, true); }
 
 function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if(e.key==='Enter'&&!e.shiftKey){
     e.preventDefault();
-    if (state.answered) nextCard(); else checkAnswer();
+    if(S.answered) nextCard(); else checkAns();
   }
 }
 
 function nextCard() {
-  state.cursor++;
-  if (state.cursor >= state.queue.length) showResult();
-  else loadCard();
+  S.cursor++;
+  if(S.cursor>=S.queue.length) showResult(); else loadCard();
 }
 
-function toggleBookmark() {
-  const idx = state.queue[state.cursor];
-  const key = state.task + '-' + idx;
-  state.bookmarks[key] = !state.bookmarks[key];
-  localStorage.setItem('bm_s2', JSON.stringify(state.bookmarks));
-  const bb = document.getElementById('bookmarkBtn');
-  bb.textContent = state.bookmarks[key] ? '★' : '☆';
-  bb.classList.toggle('active', !!state.bookmarks[key]);
+function toggleBmk() {
+  const idx = S.queue[S.cursor];
+  const k = S.task+'-'+idx;
+  S.bm[k]=!S.bm[k];
+  localStorage.setItem('s2bm',JSON.stringify(S.bm));
+  const bb=document.getElementById('bmkBtn');
+  bb.textContent=S.bm[k]?'★':'☆'; bb.classList.toggle('on',!!S.bm[k]);
 }
 
+// ═══════════════════════════════════════════════════════
+//  RESULT
+// ═══════════════════════════════════════════════════════
 function showResult() {
-  const total = state.queue.length;
-  const rate = total > 0 ? Math.round(state.correctCount / total * 100) : 0;
-  document.getElementById('resultEmoji').textContent = rate >= 90 ? '🏆' : rate >= 70 ? '🎯' : rate >= 50 ? '📚' : '💪';
-  document.getElementById('resultTitle').textContent = rate >= 90 ? '완벽!' : rate >= 70 ? '잘했어요!' : rate >= 50 ? '계속 도전!' : '다시 도전!';
-  document.getElementById('resultSub').textContent = 'Task ' + state.task + ' · ' + {sequential:'순서',reverse:'역순',random:'랜덤'}[state.settings.order] + ' 모드';
-  document.getElementById('statCorrect').textContent = state.correctCount;
-  document.getElementById('statWrong').textContent = state.wrongCount;
-  document.getElementById('statRate').textContent = rate + '%';
-  const wl = document.getElementById('wrongList');
-  const rb = document.getElementById('retryWrongBtn');
-  if (state.wrongPool.length > 0) {
-    wl.style.display = 'block'; rb.style.display = 'flex';
-    document.getElementById('wrongItems').innerHTML = state.wrongPool.map(i => {
-      const c = state.deck[i];
-      return '<div class="wrong-item"><span class="wi-section">' + c.section + '</span> ' + c.question + '</div>';
+  const total=S.queue.length;
+  const rate=total>0?Math.round(S.ok/total*100):0;
+  document.getElementById('rEmoji').textContent = rate>=90?'🏆':rate>=70?'🎯':rate>=50?'📚':'💪';
+  document.getElementById('rTitle').textContent = rate>=90?'완벽!':rate>=70?'잘했어요!':rate>=50?'계속 도전!':'다시 도전!';
+  document.getElementById('rSub').textContent = 'Task '+S.task+' · '+{seq:'순서',rev:'역순',rnd:'랜덤'}[S.cfg.order]+' 모드';
+  document.getElementById('sOk').textContent=S.ok;
+  document.getElementById('sNg').textContent=S.ng;
+  document.getElementById('sRate').textContent=rate+'%';
+  const wl=document.getElementById('wList'), rb=document.getElementById('retryWBtn');
+  if(S.wrong.length>0){
+    wl.style.display='block'; rb.style.display='flex';
+    document.getElementById('wItems').innerHTML=S.wrong.map(i=>{
+      const c=S.deck[i];
+      return `<div class="wi"><span class="wi-sec">${c.section}</span>${c.q}</div>`;
     }).join('');
-  } else { wl.style.display = 'none'; rb.style.display = 'none'; }
+  } else { wl.style.display='none'; rb.style.display='none'; }
   showScreen('resultScreen');
 }
 
-function retryWrong() { startTask(state.task, true, state.wrongPool.map(i => state.deck[i])); }
-function retryAll() { startTask(state.task, false, null); }
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+function retryWrong(){ startTask(S.task, S.wrong.map(i=>S.deck[i])); }
+function retryAll(){ startTask(S.task, null); }
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function goHome(){ ttsStop(); showScreen('homeScreen'); }
+
+// ═══════════════════════════════════════════════════════
+//  TTS ENGINE
+// ═══════════════════════════════════════════════════════
+const TTS = {
+  rate: 1,
+  utt: null,
+  playing: false,
+  text: '',
+  supported: 'speechSynthesis' in window
+};
+
+function ttsInit() {
+  // preload voices (some browsers need this)
+  if(TTS.supported) speechSynthesis.getVoices();
 }
-function goHome() { showScreen('homeScreen'); }
+window.addEventListener('load', ttsInit);
+window.speechSynthesis && window.addEventListener('beforeunload', ()=> speechSynthesis.cancel());
+
+function ttsSpeak(text) {
+  if(!TTS.supported) return;
+  speechSynthesis.cancel();
+  TTS.text = text;
+  TTS.playing = true;
+  updateTtsUI(true);
+
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'en-GB';
+  utt.rate = TTS.rate;
+  utt.pitch = 1;
+
+  // prefer a natural English voice
+  const voices = speechSynthesis.getVoices();
+  const preferred = voices.find(v=>
+    v.lang.startsWith('en') && (v.name.includes('Daniel') || v.name.includes('Karen') ||
+    v.name.includes('Samantha') || v.name.includes('Google UK') || v.name.includes('Arthur'))
+  ) || voices.find(v=> v.lang.startsWith('en-GB'))
+    || voices.find(v=> v.lang.startsWith('en'));
+  if(preferred) utt.voice = preferred;
+
+  utt.onend = () => { TTS.playing=false; updateTtsUI(false); };
+  utt.onerror = () => { TTS.playing=false; updateTtsUI(false); };
+  TTS.utt = utt;
+  speechSynthesis.speak(utt);
+}
+
+function ttsStop() {
+  if(!TTS.supported) return;
+  speechSynthesis.cancel();
+  TTS.playing = false;
+  updateTtsUI(false);
+}
+
+function ttsToggle() {
+  if(TTS.playing) { ttsStop(); return; }
+  ttsSpeak(TTS.text);
+}
+
+function setTtsRate(r, btn) {
+  TTS.rate = r;
+  document.querySelectorAll('.tts-speed button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  // if currently playing, restart at new rate
+  if(TTS.playing) ttsSpeak(TTS.text);
+}
+
+function updateTtsUI(playing) {
+  const btn = document.getElementById('ttsPlayBtn');
+  const lbl = document.getElementById('ttsLabel');
+  if(!btn) return;
+  btn.textContent = playing ? '■' : '▶';
+  btn.classList.toggle('playing', playing);
+  lbl.textContent = playing ? '재생 중... (클릭하여 정지)' : '정답 문장 듣기';
+}
+
+function showTtsBar(fullText) {
+  // strip HTML tags for speech
+  const clean = fullText.replace(/<[^>]+>/g,'').replace(/\[.*?\]/g,'').trim();
+  TTS.text = clean;
+  TTS.playing = false;
+  updateTtsUI(false);
+  const bar = document.getElementById('ttsBar');
+  bar.style.display = 'flex';
+  // auto-play after short delay
+  setTimeout(()=> ttsSpeak(clean), 400);
+}
+
+function hideTtsBar() {
+  ttsStop();
+  const bar = document.getElementById('ttsBar');
+  if(bar) bar.style.display = 'none';
+}
 </script>
 </body>
 </html>
