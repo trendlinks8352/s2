@@ -99,7 +99,10 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 
 /* input / buttons */
 .iarea{display:flex;flex-direction:column;gap:9px}
-.ainput{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;outline:none;transition:border-color .2s;resize:none}
+.inputs-wrap{display:flex;flex-direction:column;gap:7px}
+.input-row{display:flex;align-items:center;gap:8px}
+.blank-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);flex-shrink:0;min-width:40px;text-align:right}
+.ainput{flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;outline:none;transition:border-color .2s;width:100%}
 .ainput:focus{border-color:var(--accent2)}
 .ainput.ok{border-color:var(--ok);background:rgba(92,184,138,.07)}
 .ainput.ng{border-color:var(--err);background:rgba(224,108,117,.07)}
@@ -231,7 +234,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
       </div>
     </div>
   <div class="iarea">
-    <textarea class="ainput" id="aInp" rows="2" placeholder="정답 입력... (Enter 제출, Shift+Enter 줄바꿈)" onkeydown="handleKey(event)"></textarea>
+    <div class="inputs-wrap" id="inputsWrap"></div>
     <div class="brow" id="aBtns">
       <button class="btn btn-pri" onclick="checkAns()">✓ 정답 확인</button>
       <button class="btn btn-sec" onclick="showHint()">💡 힌트</button>
@@ -587,15 +590,15 @@ function loadCard() {
   document.getElementById('hintTxt').className='hint-txt';
   const fb = document.getElementById('fb');
   fb.className='fb'; fb.style.display='none';
-  const inp = document.getElementById('aInp');
-  inp.value=''; inp.className='ainput'; inp.disabled=false;
   document.getElementById('aBtns').style.display='grid';
   document.getElementById('nBtns').style.display='none';
 
-  // re-animate
+  // build per-blank inputs
+  buildInputs(card);
+
+  // re-animate card
   const c = document.getElementById('qCard');
   c.style.animation='none'; c.offsetHeight; c.style.animation='';
-  inp.focus();
 }
 
 function renderPrompt(text, task) {
@@ -622,18 +625,63 @@ function renderFilled(text, blanks, correct, task) {
 // ═══════════════════════════════════════════════════════
 //  ANSWER CHECK
 // ═══════════════════════════════════════════════════════
-function checkAns() {
-  if(S.answered) return;
-  const idx = S.queue[S.cursor];
-  const card = S.deck[idx];
-  const val = document.getElementById('aInp').value.trim();
-  if(!val){ reveal(card, false, true); return; }
-  const norm = s => s.toLowerCase().replace(/['''""`\-]/g,'').replace(/\s+/g,' ').trim();
-  const ok = card.blanks.every(b => norm(val).includes(norm(b)));
-  reveal(card, ok, false);
+function buildInputs(card) {
+  const wrap = document.getElementById('inputsWrap');
+  wrap.innerHTML = '';
+  card.blanks.forEach((blank, i) => {
+    const row = document.createElement('div');
+    row.className = 'input-row';
+    const lbl = document.createElement('span');
+    lbl.className = 'blank-label';
+    lbl.textContent = card.blanks.length > 1 ? `빈칸 ${i+1}` : '정답';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'ainput';
+    inp.id = 'aInp_' + i;
+    inp.placeholder = blank.length > 20 ? '입력...' : `힌트: ${blank.length}글자`;
+    inp.autocomplete = 'off';
+    inp.autocorrect = 'off';
+    inp.spellcheck = false;
+    inp.addEventListener('keydown', e => {
+      if(e.key === 'Enter') {
+        e.preventDefault();
+        if(S.answered) { nextCard(); return; }
+        // move to next input or submit
+        const nextInp = document.getElementById('aInp_' + (i+1));
+        if(nextInp && !nextInp.disabled) nextInp.focus();
+        else checkAns();
+      }
+    });
+    row.appendChild(lbl);
+    row.appendChild(inp);
+    wrap.appendChild(row);
+  });
+  // focus first input
+  const first = document.getElementById('aInp_0');
+  if(first) setTimeout(() => first.focus(), 80);
 }
 
-function reveal(card, ok, skipped) {
+function getInputValues() {
+  const card = S.deck[S.queue[S.cursor]];
+  return card.blanks.map((_, i) => {
+    const el = document.getElementById('aInp_' + i);
+    return el ? el.value.trim() : '';
+  });
+}
+
+function checkAns() {
+  if(S.answered) return;
+  const card = S.deck[S.queue[S.cursor]];
+  const vals = getInputValues();
+  if(vals.every(v => v === '')) { reveal(card, false, true); return; }
+  const norm = s => s.toLowerCase().replace(/['''""`\-]/g,'').replace(/\s+/g,' ').trim();
+  // each input checked against its corresponding blank
+  const results = card.blanks.map((b, i) => norm(vals[i] || '').includes(norm(b)));
+  const ok = results.every(r => r);
+  reveal(card, ok, false, results);
+}
+
+function reveal(card, ok, skipped, results) {
   S.answered = true;
   const idx = S.queue[S.cursor];
   if(!skipped){
@@ -641,9 +689,15 @@ function reveal(card, ok, skipped) {
     else { S.ng++; if(S.cfg.retry==='on') S.wrong.push(idx); }
   } else { S.ng++; S.wrong.push(idx); }
 
-  const inp = document.getElementById('aInp');
-  inp.disabled=true;
-  if(!skipped) inp.className='ainput '+(ok?'ok':'ng');
+  // style each input individually
+  card.blanks.forEach((_, i) => {
+    const inp = document.getElementById('aInp_' + i);
+    if(!inp) return;
+    inp.disabled = true;
+    if(!skipped && results) {
+      inp.className = 'ainput ' + (results[i] ? 'ok' : 'ng');
+    }
+  });
 
   // re-render prompt with filled blanks
   if(!skipped) {
@@ -677,9 +731,10 @@ function showHint() {
   h.className = 'hint-txt show';
 }
 
-function skipCard() { reveal(S.deck[S.queue[S.cursor]], false, true); }
+function skipCard() { reveal(S.deck[S.queue[S.cursor]], false, true, null); }
 
 function handleKey(e) {
+  // legacy fallback — individual inputs handle Enter themselves
   if(e.key==='Enter'&&!e.shiftKey){
     e.preventDefault();
     if(S.answered) nextCard(); else checkAns();
