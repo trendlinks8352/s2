@@ -180,7 +180,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     <div class="task-card b" onclick="startTask('B')">
       <div class="tag">Task B</div>
       <h2>Responsibility</h2>
-      <p>새벽 서버장애 에세이 — 키워드 인출 훈련</p>
+      <p>Responsibility 템플릿 — 🔴 슬롯 채워 에세이 구조 완성</p>
       <div class="cnt" id="cntB">— 문항</div>
     </div>
   </div>
@@ -403,9 +403,9 @@ const DECK_A = [
 const DECK_B = [
   // ── 서론 ──
   {
-    section:"서론 — Re-definition ①",
-    q:"책임감의 '과거 착각' — noble + competent 조합으로 상상했다는 오프닝은?",
-    prompt:"Reflecting on the theme of Responsibility, I once imagined it as something 【___】 — an attribute worn proudly by those who had already become who they 【___】 to be.",
+    section:"서론 ①",
+    q:"TOPIC 을 한때 어떻게 착각했는가? — 오프닝 Hook 문장의 빈칸은?",
+    prompt:"Reflecting on the theme of 🔴[TOPIC], I once imagined it as something 【___】 — an attribute worn proudly by those who had already become who they 【___】 to be.",
     blanks:["noble","wanted"],
     answer:"noble / wanted",
     full:"Reflecting on the theme of Responsibility, I once imagined it as something noble — an attribute worn proudly by those who had already become who they wanted to be.",
@@ -413,88 +413,109 @@ const DECK_B = [
     tip:"오프닝에서 '착각'을 먼저 설정해야 나중 반전이 살아난다."
   },
   {
-    section:"서론 — Re-definition ②",
-    q:"책임감이 실제로 어떻게 나타나는가 — 3가지 속성으로 재정의하는 thesis는?",
-    prompt:"Only later did I understand that Responsibility rarely 【___】 itself with dignity. It arrives at 【___】 hours, in 【___】 forms, and asks something of us before we feel ready to give it.",
-    blanks:["announces","inconvenient","unglamorous"],
-    answer:"announces / inconvenient / unglamorous",
+    section:"서론 ②",
+    q:"TOPIC 이 실제로 나타나는 방식 3가지 — Thesis 재정의 문장의 빈칸은?",
+    prompt:"Only later did I understand that 🔴[TOPIC] rarely 【___】 itself with dignity. It arrives at 【___】 hours, in 【___】 forms, and asks something of us before we feel 【___】 to give it.",
+    blanks:["announces","inconvenient","unglamorous","ready"],
+    answer:"announces / inconvenient / unglamorous / ready",
     full:"Only later did I understand that Responsibility rarely announces itself with dignity. It arrives at inconvenient hours, in unglamorous forms, and asks something of us before we feel ready to give it.",
-    hint:"알리다 / 불편한 / 화려하지 않은",
-    tip:"마지막 'asks something of us before we feel ready' 로 끝내 — 독자가 다음 이야기를 기대하게 만드는 훅."
+    hint:"알리다 / 불편한 / 화려하지 않은 / 준비된",
+    tip:"'asks something of us before we feel ready' 로 끝내 — 독자가 다음 이야기를 기대하게 만드는 훅."
   },
 
   // ── 본론 1 ──
   {
-    section:"본론1 — Incident ①",
-    q:"새벽 서버 장애의 풍경 — 교과서, 알림음, 도시의 침묵으로 긴장감 설정하는 문장들은?",
-    prompt:"One night, while preparing for the GAMSAT, a critical server failure struck at 【___】 AM. My textbooks lay open across the desk, dense with notes that promised a 【___】 future. The alert cut through the silence of my apartment like an 【___】.",
+    section:"본론1 ① — 사건 배경",
+    q:"새벽 서버 장애 장면 — 공부 책상, 알림음, 침묵의 대비로 긴장감 설정하는 빈칸은?",
+    prompt:"One night, while preparing for the GAMSAT, a critical server failure struck at 【___】 AM.\nMy textbooks lay open across the desk, dense with notes that promised a 【___】 future.\nThe alert cut through the silence of my apartment like an 【___】.",
     blanks:["1","different","accusation"],
-    answer:"1 AM / different future / accusation",
+    answer:"1 / different / accusation",
     full:"One night, while preparing for the GAMSAT, a critical server failure struck at 1 AM. My textbooks lay open across the desk, dense with notes that promised a different future. The alert cut through the silence of my apartment like an accusation.",
-    hint:"새벽 1시 / 다른 미래 / 고발(비유)",
+    hint:"새벽 1시 / 다른 / 고발·비난(비유)",
     tip:"'like an accusation' — 알림음을 고발로 표현. 이런 비유가 70+ 만들어주는 문장."
   },
   {
-    section:"본론1 — Incident ②",
-    q:"솔직한 감정 토로 + 'But I would know' 반전 — 가장 짧고 강한 두 문장은?",
-    prompt:"I did not feel 【___】. I felt 【___】. \u201cWhy now? Why must I sacrifice my future for a machine?\u201d\nI considered ignoring the alert. No one would know that I hesitated.\n【___】.",
-    blanks:["admirable","resentful","But I would know"],
-    answer:"admirable / resentful / But I would know",
-    full:"I did not feel admirable. I felt resentful. 'Why now? Why must I sacrifice my future for a machine?' No one would know that I hesitated. But I would know.",
-    hint:"존경스러운 / 분개한 / But I would know",
-    tip:"'But I would know.' 를 반드시 단독 문장으로 분리. 짧은 문장이 긴 단락보다 채점관 기억에 훨씬 강하게 남는다."
+    section:"본론1 ② — 솔직한 감정",
+    q:"존경스럽지 않고 원망스러웠다 — 감정 토로 두 단어는?",
+    prompt:"I did not feel 【___】. I felt 【___】.\n“Why now? Why must I sacrifice my future for a machine?”\nThe city outside was asleep, and the stillness made my 【___】 louder.",
+    blanks:["admirable","resentful","frustration"],
+    answer:"admirable / resentful / frustration",
+    full:"I did not feel admirable. I felt resentful. 'Why now? Why must I sacrifice my future for a machine?' The city outside was asleep, and the stillness made my frustration louder.",
+    hint:"존경스러운 / 분개한 / 좌절감",
+    tip:"감정을 숨기지 말고 먼저 드러내야 채점관이 공감한다. 정직한 감정 서술이 신뢰를 만든다."
+  },
+  {
+    section:"본론1 ③ — 🔑 Punchline",
+    q:"아무도 모를 거라는 유혹을 박살 낸 가장 짧고 강한 문장은?",
+    prompt:"I considered ignoring the alert. 🔴[No one would know] that I hesitated.\n【___】.",
+    blanks:["But I would know"],
+    answer:"But I would know",
+    full:"I considered ignoring the alert. No one would know that I hesitated. But I would know.",
+    hint:"But I would know.",
+    tip:"'But I would know.' 단독 문장으로 반드시 분리. 짧은 문장이 긴 단락보다 채점관 기억에 훨씬 강하게 남는다."
   },
 
   // ── 본론 2 ──
   {
-    section:"본론2 — Struggle ①",
-    q:"'감시받지 않을 때 우리가 누구인지'가 책임감의 본질 — 핵심 통찰 문장은?",
-    prompt:"Responsibility, I was beginning to understand, is rarely about being 【___】. It is about who we choose to be when 【___】.",
+    section:"본론2 ① — 핵심 통찰",
+    q:"책임감은 감시받을 때가 아니라 언제에 관한 것인가?",
+    prompt:"🔴[TOPIC], I was beginning to understand, is rarely about being 【___】.\nIt is about who we choose to be when 【___】.",
     blanks:["watched","no one is"],
     answer:"watched / no one is",
     full:"Responsibility, I was beginning to understand, is rarely about being watched. It is about who we choose to be when no one is.",
-    hint:"지켜볼 때가 아니라 / 아무도 없을 때",
-    tip:"이 문장이 에세이 전체의 핵심 정의. 외울 것."
+    hint:"지켜볼 때 / 아무도 없을 때",
+    tip:"이 문장이 에세이 전체의 핵심 정의. 반드시 외울 것."
   },
   {
-    section:"본론2 — Struggle ②",
-    q:"진짜 장애물은 서버가 아니라 내 쓴 마음이었다 — 반전 두 문장은?",
-    prompt:"The task itself was mechanical, almost 【___】. Yet beneath it ran a quieter struggle — the decision to show up despite 【___】.\nThe server was not the true obstacle. My 【___】 was.",
+    section:"본론2 ② — 🔑 반전 구조",
+    q:"진짜 장애물은 서버가 아니라 내 쓴 마음 — 반전 두 문장의 빈칸은?",
+    prompt:"The task itself was mechanical, almost 【___】.\nYet beneath it ran a quieter struggle — the decision to show up despite 【___】.\nThe server was not the true obstacle. My 【___】 was.",
     blanks:["mundane","resentment","bitterness"],
     answer:"mundane / resentment / bitterness",
     full:"The task itself was mechanical, almost mundane. Yet beneath it ran a quieter struggle — the decision to show up despite resentment. The server was not the true obstacle. My bitterness was.",
-    hint:"평범한 / 분개 / 쓴 마음",
+    hint:"평범한 / 분개 / 쓴 마음(원한)",
     tip:"'The server was not the true obstacle. My bitterness was.' — 이 반전 구조가 70+의 핵심."
   },
   {
-    section:"본론2 — Realisation",
-    q:"책임감의 재정의 — '거창한 희생'이 아니라 '반복적이고 감사받지 못하는 선택'이란 문장은?",
-    prompt:"Responsibility is not the grand 【___】 we imagine. It is the repeated, often 【___】 choice to act in 【___】 with our values, even when it costs us comfort.",
+    section:"본론2 ③ — 재정의",
+    q:"TOPIC 은 거창한 희생이 아니라 — 재정의 문장의 빈칸 3개는?",
+    prompt:"🔴[TOPIC], I realised, is not the grand 【___】 we imagine.\nIt is the repeated, often 【___】 choice to act in 【___】 with our values, even when it costs us comfort.",
     blanks:["sacrifice","thankless","alignment"],
     answer:"sacrifice / thankless / alignment",
     full:"Responsibility, I realised, is not the grand sacrifice we imagine. It is the repeated, often thankless choice to act in alignment with our values, even when it costs us comfort.",
-    hint:"희생 / 감사 없는 / 정렬"
+    hint:"희생 / 감사 없는 / 가치관과의 정렬",
+    tip:"'thankless' 와 'alignment' 가 핵심 단어. 이 두 단어가 떠오르면 문장 전체가 따라온다."
   },
 
   // ── 결론 ──
   {
-    section:"결론 — Doctor Link",
-    q:"서버 장애를 미래의 의사 생활로 연결하는 브릿지 + 같은 감정이 돌아올 것이라는 솔직한 인정은?",
-    prompt:"Perhaps one day it will not be a 【___】 but a 【___】 who wakes me at 3 AM. I do not know whether I will feel ready. I suspect I may feel the same flicker of 【___】, the same tired 【___】.",
+    section:"결론 ① — Doctor Link",
+    q:"서버 → 환자로 연결하는 브릿지 + 같은 감정이 돌아올 것이라는 솔직한 인정은?",
+    prompt:"Perhaps one day it will not be a 【___】 but a 【___】 who wakes me at 3 AM.\nI do not know whether I will feel ready.\nI suspect I may feel the same flicker of 【___】, the same tired 【___】.",
     blanks:["server","patient","resentment","resistance"],
     answer:"server / patient / resentment / resistance",
     full:"Perhaps one day it will not be a server but a patient who wakes me at 3 AM. I do not know whether I will feel ready. I suspect I may feel the same flicker of resentment, the same tired resistance.",
     hint:"서버 → 환자 / 분노 / 저항감",
-    tip:"반드시 의사 연결고리를 넣어. 채점관이 '이 사람이 왜 의대를 가려는지' 자연스럽게 느껴야 한다."
+    tip:"반드시 의사 연결고리를 넣어. 채점관이 '이 사람이 왜 의대를 가려는지' 자연스럽게 느껴야 해. 직접 말하지 말고 암시로."
   },
   {
-    section:"결론 — 최종 통찰",
-    q:"책임감은 시간을 잃는 것이 아니라 — 결론 마무리 두 문장은?",
-    prompt:"Responsibility is not measured in grand 【___】. It is built in the small moments when no one is watching, when the cost is real, and when we choose 【___】 over convenience regardless.\nIn the end, Responsibility is not about losing 【___】. It is about shaping the person who must stand in that 【___】.",
-    blanks:["gestures","integrity","time","time"],
-    answer:"gestures / integrity / time / time",
-    full:"Responsibility is not measured in grand gestures. It is built in the small moments when no one is watching, when the cost is real, and when we choose integrity over convenience regardless. In the end, Responsibility is not about losing time. It is about shaping the person who must stand in that time.",
-    hint:"제스처 / 무결성(integrity) / time / time",
+    section:"결론 ② — 소결론",
+    q:"TOPIC 은 거창한 제스처가 아니라 — 소결론 문장의 빈칸은?",
+    prompt:"🔴[TOPIC] is not measured in grand 【___】.\nIt is built in the small moments when no one is 【___】, when the cost is real, and when we choose 【___】 over convenience regardless.",
+    blanks:["gestures","watching","integrity"],
+    answer:"gestures / watching / integrity",
+    full:"Responsibility is not measured in grand gestures. It is built in the small moments when no one is watching, when the cost is real, and when we choose integrity over convenience regardless.",
+    hint:"제스처 / 지켜볼 때 / 무결성·정직성",
+    tip:"'integrity over convenience' 가 이 문장의 핵심 대비. 통째로 외울 것."
+  },
+  {
+    section:"결론 ③ — 🔑 최종 통찰",
+    q:"작은 방해를 정직하게 → 더 큰 것을 인간적으로 — 성장 연결 + 마지막 정의는?",
+    prompt:"If I can learn to meet small 【___】 with 【___】 now, perhaps I will be capable of meeting greater ones with 【___】 later.\nIn the end, 🔴[TOPIC] is not about losing 【___】.\nIt is about shaping the person who must stand in that 【___】.",
+    blanks:["interruptions","honesty","humanity","time","time"],
+    answer:"interruptions / honesty / humanity / time / time",
+    full:"If I can learn to meet small interruptions with honesty now, perhaps I will be capable of meeting greater ones with humanity later. In the end, Responsibility is not about losing time. It is about shaping the person who must stand in that time.",
+    hint:"방해 / 정직 / 인간성 / time / time",
     tip:"'shaping the person who must stand in that time' — 에세이 전체를 마무리짓는 가장 강한 문장."
   }
 ];
