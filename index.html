@@ -630,8 +630,11 @@ function loadCard() {
   // question
   document.getElementById('cQ').textContent = card.q;
 
+  // randomize which blanks appear this round
+  const rc = randomizeCard(card);
+
   // prompt rendering
-  document.getElementById('cPrompt').innerHTML = renderPrompt(card.prompt, S.task);
+  document.getElementById('cPrompt').innerHTML = renderPrompt(rc.prompt, S.task);
 
   // tip box
   const tb2 = document.getElementById('tipBox');
@@ -655,10 +658,54 @@ function loadCard() {
   c.style.animation='none'; c.offsetHeight; c.style.animation='';
 }
 
+// ═══════════════════════════════════════════════════════
+//  RANDOM BLANK ENGINE
+// ═══════════════════════════════════════════════════════
+// S.activeCard stores the randomized version for the current card
+let activeCard = null;
+
+function randomizeCard(card) {
+  const allBlanks = card.blanks;
+  if(allBlanks.length <= 1) {
+    // Only 1 blank: nothing to randomize, use as-is
+    activeCard = { prompt: card.prompt, blanks: allBlanks, orig: card };
+    return activeCard;
+  }
+
+  // Pick how many blanks to show: at least 1, at most all
+  // Weight toward showing fewer blanks for harder cards
+  const minShow = 1;
+  const maxShow = allBlanks.length;
+  const count = Math.floor(Math.random() * (maxShow - minShow + 1)) + minShow;
+
+  // Randomly pick which blank indices to actually blank out
+  const indices = shuffle([...Array(allBlanks.length).keys()]);
+  const blankSet = new Set(indices.slice(0, count));
+
+  // Rebuild prompt: 【___】 slots → blank if in blankSet, else show the word
+  let slotIdx = 0;
+  const activeBlanksList = [];
+  const newPrompt = card.prompt.replace(/【___】/g, () => {
+    const i = slotIdx++;
+    if(blankSet.has(i)) {
+      activeBlanksList.push(allBlanks[i]);
+      return '【___】';
+    } else {
+      // Show the word inline (styled as "given")
+      return `【${allBlanks[i]}】`;
+    }
+  });
+
+  activeCard = { prompt: newPrompt, blanks: activeBlanksList, orig: card };
+  return activeCard;
+}
+
 function renderPrompt(text, task) {
   const blankCls = task==='A' ? 'red-blank' : 'kw-blank';
-  // replace 【___】 with blank span
+  // blank slots
   let html = text.replace(/【___】/g, `<span class="${blankCls}">?</span>`);
+  // given (non-blank) slots — styled as revealed
+  html = html.replace(/【([^】]+)】/g, `<span class="${blankCls} filled" style="opacity:.75">$1</span>`);
   // highlight 🔴[...] slots in task A
   html = html.replace(/🔴\[([^\]]+)\]/g, '<span style="color:#e06c75;font-family:\'DM Mono\',monospace;font-size:13px;opacity:.8">[$1]</span>');
   // newlines
@@ -670,7 +717,10 @@ function renderFilled(text, blanks, correct, task) {
   const cls = correct ? 'filled' : 'wrong';
   const blankBase = task==='A' ? 'red-blank' : 'kw-blank';
   let i=0;
+  // blank slots → filled with answer
   let html = text.replace(/【___】/g, ()=>`<span class="${blankBase} ${cls}">${blanks[i++]||'?'}</span>`);
+  // given slots (non-blank, shown inline) → keep styled as given
+  html = html.replace(/【([^】]+)】/g, `<span class="${blankBase} filled" style="opacity:.75">$1</span>`);
   html = html.replace(/🔴\[([^\]]+)\]/g, '<span style="color:#e06c75;font-family:\'DM Mono\',monospace;font-size:13px;opacity:.8">[$1]</span>');
   html = html.replace(/\n/g,'<br>');
   return html;
@@ -680,14 +730,15 @@ function renderFilled(text, blanks, correct, task) {
 //  ANSWER CHECK
 // ═══════════════════════════════════════════════════════
 function buildInputs(card) {
+  const ac = activeCard || card;
   const wrap = document.getElementById('inputsWrap');
   wrap.innerHTML = '';
-  card.blanks.forEach((blank, i) => {
+  ac.blanks.forEach((blank, i) => {
     const row = document.createElement('div');
     row.className = 'input-row';
     const lbl = document.createElement('span');
     lbl.className = 'blank-label';
-    lbl.textContent = card.blanks.length > 1 ? `빈칸 ${i+1}` : '정답';
+    lbl.textContent = ac.blanks.length > 1 ? `빈칸 ${i+1}` : '정답';
     const inp = document.createElement('input');
     inp.type = 'text';
     inp.className = 'ainput';
@@ -716,8 +767,8 @@ function buildInputs(card) {
 }
 
 function getInputValues() {
-  const card = S.deck[S.queue[S.cursor]];
-  return card.blanks.map((_, i) => {
+  const ac = activeCard || S.deck[S.queue[S.cursor]];
+  return ac.blanks.map((_, i) => {
     const el = document.getElementById('aInp_' + i);
     return el ? el.value.trim() : '';
   });
@@ -729,8 +780,9 @@ function checkAns() {
   const vals = getInputValues();
   if(vals.every(v => v === '')) { reveal(card, false, true); return; }
   const norm = s => s.toLowerCase().replace(/['''""`\-]/g,'').replace(/\s+/g,' ').trim();
-  // each input checked against its corresponding blank
-  const results = card.blanks.map((b, i) => norm(vals[i] || '').includes(norm(b)));
+  const ac = activeCard || card;
+  // each input checked against its corresponding active blank
+  const results = ac.blanks.map((b, i) => norm(vals[i] || '').includes(norm(b)));
   const ok = results.every(r => r);
   reveal(card, ok, false, results);
 }
@@ -744,7 +796,8 @@ function reveal(card, ok, skipped, results) {
   } else { S.ng++; S.wrong.push(idx); }
 
   // style each input individually
-  card.blanks.forEach((_, i) => {
+  const ac = activeCard || card;
+  ac.blanks.forEach((_, i) => {
     const inp = document.getElementById('aInp_' + i);
     if(!inp) return;
     inp.disabled = true;
@@ -755,8 +808,9 @@ function reveal(card, ok, skipped, results) {
 
   // re-render prompt with filled blanks
   if(!skipped) {
+    const acard = activeCard || card;
     document.getElementById('cPrompt').innerHTML =
-      renderFilled(card.prompt, card.blanks, ok, S.task);
+      renderFilled(acard.prompt, acard.blanks, ok, S.task);
   }
 
   // feedback
