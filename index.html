@@ -899,10 +899,35 @@ function reveal(card, ok, skipped, results) {
   }
 }
 
+function makeHint(word) {
+  // Generate hint from the actual blank word:
+  // Show first letter + length dots  e.g. "accusation" → "a________n (10)"
+  if(!word) return '?';
+  const w = word.trim();
+  if(w.length <= 2) return w;
+  // For multi-word phrases, hint each word
+  if(w.includes(' ')) {
+    return w.split(' ').map(part => makeHint(part)).join(' / ');
+  }
+  const first = w[0];
+  const last = w[w.length - 1];
+  const mid = '_'.repeat(Math.max(1, w.length - 2));
+  return `${first}${mid}${last}  (${w.length}글자)`;
+}
+
 function showHint() {
-  const card = S.deck[S.queue[S.cursor]];
   const h = document.getElementById('hintTxt');
-  h.textContent = '💡 ' + card.hint;
+  // Use activeCard's current blanks — not the original card.hint
+  if(activeCard && activeCard.blanks.length > 0) {
+    const hints = activeCard.blanks.map((b, i) => {
+      const label = activeCard.blanks.length > 1 ? `빈칸${i+1}: ` : '';
+      return label + makeHint(b);
+    }).join('   ');
+    h.textContent = '💡 ' + hints;
+  } else {
+    const card = S.deck[S.queue[S.cursor]];
+    h.textContent = '💡 ' + card.hint;
+  }
   h.className = 'hint-txt show';
 }
 
