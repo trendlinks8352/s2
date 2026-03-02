@@ -665,18 +665,10 @@ function loadCard() {
 let activeCard = null;
 
 function randomizeCard(card) {
-  // Extract meaningful words from the full sentence to use as blank candidates.
-  // We always include the original blanks[] as candidates, plus pull extra
-  // "interesting" words from the full sentence so every run feels fresh.
-
   const full = card.full;
   const origBlanks = card.blanks;
 
-  // --- Step 1: collect candidate words from full sentence ---
-  // Strip bracket placeholders like [TOPIC], [CONTEXT] etc.
-  const cleaned = full.replace(/\[[^\]]+\]/g, '').replace(/["""'']/g, '');
-
-  // Tokenise: split on spaces/punctuation, keep only real words (4+ chars)
+  // ── Step 1: 문장에서 빈칸 후보 단어 수집 ──
   const stopWords = new Set([
     'that','this','with','from','have','been','were','they','them','their',
     'what','when','where','which','while','would','could','should','about',
@@ -685,66 +677,63 @@ function randomizeCard(card) {
     'those','these','there','here','both','each','once','often','under',
     'never','always','still','again','along','among','other','every',
     'perhaps','already','because','however','therefore','although','whether',
-    'something','anything','everything','nothing','someone','anyone',
-    'began','began','being','having','doing','making','taking','going',
-    'itself','myself','yourself','himself','herself','ourselves',
+    'something','anything','nothing','someone','anyone','began','being',
+    'having','itself','myself','yourself','himself','herself',
     'without','within','towards','between','through','during','against'
   ]);
 
-  const tokens = cleaned.match(/[a-zA-Z]{4,}/g) || [];
-  const candidates = tokens.filter(w => {
-    const lw = w.toLowerCase();
-    return !stopWords.has(lw);
-  });
-
-  // Deduplicate (case-insensitive), preserve original casing
+  // full 문장에서 [SLOT] 제거 후 단어 추출
+  const cleaned = full.replace(/\[[^\]]+\]/g, '').replace(/["""'']/g, '');
+  const tokens = (cleaned.match(/[a-zA-Z]{4,}/g) || []);
   const seen = new Set();
-  const uniqueCandidates = [];
-  for(const w of candidates){
+  const extras = [];
+  for (const w of tokens) {
     const lw = w.toLowerCase();
-    if(!seen.has(lw)){ seen.add(lw); uniqueCandidates.push(w); }
-  }
-
-  // Always include origBlanks as candidates (they're the "important" ones)
-  // Merge: origBlanks first (higher priority), then extras from sentence
-  const origLower = new Set(origBlanks.map(b => b.toLowerCase().split(/\s+/)[0]));
-  const extras = uniqueCandidates.filter(w => !origLower.has(w.toLowerCase()));
-
-  // Build pool: origBlanks + up to 4 extra words
-  const pool = [...origBlanks, ...shuffle(extras).slice(0, 4)];
-
-  // --- Step 2: randomly pick 1 or 2 words from pool to blank out ---
-  const maxBlanks = Math.min(pool.length, origBlanks.length <= 1 ? 2 : origBlanks.length);
-  const count = Math.floor(Math.random() * maxBlanks) + 1;
-  const chosen = shuffle([...pool]).slice(0, count);
-
-  // --- Step 3: build a new prompt by replacing chosen words in full sentence ---
-  // We replace the FIRST occurrence of each chosen word (case-insensitive) with 【___】
-  let newPrompt = full;
-  // Strip [SLOT] markers for clean display, keep 🔴 markers for Task A
-  // For Task A, keep the 🔴[...] slots as-is in the display prompt
-  const activeBlanks = [];
-
-  for(const word of chosen){
-    // Escape for regex
-    const esc = word.replace(/[-.*+?^${}()|[\]\\]/g, '\\$&');
-    // Match whole word only, case-insensitive
-    const re = new RegExp('\\b(' + esc + ')\\b', 'i');
-    if(re.test(newPrompt)){
-      newPrompt = newPrompt.replace(re, '【___】');
-      // Store the actual word (as it appeared) for answer matching
-      activeBlanks.push(word);
+    if (!seen.has(lw) && !stopWords.has(lw)) {
+      seen.add(lw);
+      // 원래 blanks에 없는 단어만 추가
+      const inOrig = origBlanks.some(b => b.toLowerCase() === lw);
+      if (!inOrig) extras.push(w);
     }
   }
 
-  // Fallback: if nothing got replaced (e.g. multi-word phrases), use orig
-  if(activeBlanks.length === 0){
+  // ── Step 2: 후보 pool = origBlanks + 랜덤 extras ──
+  const pool = [...origBlanks, ...shuffle(extras).slice(0, 3)];
+
+  // 몇 개 빈칸 만들지 결정 (1 ~ pool 길이, 최대 3)
+  const count = Math.floor(Math.random() * Math.min(pool.length, 3)) + 1;
+  // 랜덤으로 count개 선택
+  const chosen = new Set(shuffle([...pool]).slice(0, count).map(w => w.toLowerCase()));
+
+  // ── Step 3: full 문장을 왼쪽→오른쪽 스캔하며 빈칸 삽입 ──
+  // 선택된 단어를 문장에서 만나는 순서대로 【___】로 교체
+  // activeBlanks는 문장에 나타나는 순서 그대로 저장
+  const activeBlanks = [];
+  let newPrompt = full.replace(/([a-zA-Z]+)/g, (match) => {
+    if (chosen.has(match.toLowerCase()) && !activeBlanks.includes(match.toLowerCase())) {
+      activeBlanks.push(match); // 실제 등장한 단어(대소문자 원본) 저장
+      return '【___】';
+    }
+    return match;
+  });
+
+  // 멀티워드 origBlanks 처리 (e.g. "cogs in a machine")
+  for (const b of origBlanks) {
+    if (b.includes(' ') && chosen.has(b.toLowerCase())) {
+      const esc = b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(esc, 'i');
+      if (re.test(newPrompt)) {
+        newPrompt = newPrompt.replace(re, '【___】');
+        activeBlanks.push(b);
+      }
+    }
+  }
+
+  if (activeBlanks.length === 0) {
+    // fallback: 원래 카드 그대로
     activeCard = { prompt: card.prompt, blanks: origBlanks, orig: card };
     return activeCard;
   }
-
-  // Replace [SLOT] placeholders with styled versions
-  newPrompt = newPrompt.replace(/\[([^\]]+)\]/g, '[$1]');
 
   activeCard = { prompt: newPrompt, blanks: activeBlanks, orig: card };
   return activeCard;
