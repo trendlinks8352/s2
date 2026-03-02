@@ -665,49 +665,101 @@ function loadCard() {
 let activeCard = null;
 
 function randomizeCard(card) {
-  const allBlanks = card.blanks;
-  if(allBlanks.length <= 1) {
-    // Only 1 blank: nothing to randomize, use as-is
-    activeCard = { prompt: card.prompt, blanks: allBlanks, orig: card };
+  // Extract meaningful words from the full sentence to use as blank candidates.
+  // We always include the original blanks[] as candidates, plus pull extra
+  // "interesting" words from the full sentence so every run feels fresh.
+
+  const full = card.full;
+  const origBlanks = card.blanks;
+
+  // --- Step 1: collect candidate words from full sentence ---
+  // Strip bracket placeholders like [TOPIC], [CONTEXT] etc.
+  const cleaned = full.replace(/\[[^\]]+\]/g, '').replace(/["""'']/g, '');
+
+  // Tokenise: split on spaces/punctuation, keep only real words (4+ chars)
+  const stopWords = new Set([
+    'that','this','with','from','have','been','were','they','them','their',
+    'what','when','where','which','while','would','could','should','about',
+    'will','does','just','more','also','than','then','into','onto','upon',
+    'even','only','some','such','very','most','over','after','before',
+    'those','these','there','here','both','each','once','often','under',
+    'never','always','still','again','along','among','other','every',
+    'perhaps','already','because','however','therefore','although','whether',
+    'something','anything','everything','nothing','someone','anyone',
+    'began','began','being','having','doing','making','taking','going',
+    'itself','myself','yourself','himself','herself','ourselves',
+    'without','within','towards','between','through','during','against'
+  ]);
+
+  const tokens = cleaned.match(/[a-zA-Z]{4,}/g) || [];
+  const candidates = tokens.filter(w => {
+    const lw = w.toLowerCase();
+    return !stopWords.has(lw);
+  });
+
+  // Deduplicate (case-insensitive), preserve original casing
+  const seen = new Set();
+  const uniqueCandidates = [];
+  for(const w of candidates){
+    const lw = w.toLowerCase();
+    if(!seen.has(lw)){ seen.add(lw); uniqueCandidates.push(w); }
+  }
+
+  // Always include origBlanks as candidates (they're the "important" ones)
+  // Merge: origBlanks first (higher priority), then extras from sentence
+  const origLower = new Set(origBlanks.map(b => b.toLowerCase().split(/\s+/)[0]));
+  const extras = uniqueCandidates.filter(w => !origLower.has(w.toLowerCase()));
+
+  // Build pool: origBlanks + up to 4 extra words
+  const pool = [...origBlanks, ...shuffle(extras).slice(0, 4)];
+
+  // --- Step 2: randomly pick 1 or 2 words from pool to blank out ---
+  const maxBlanks = Math.min(pool.length, origBlanks.length <= 1 ? 2 : origBlanks.length);
+  const count = Math.floor(Math.random() * maxBlanks) + 1;
+  const chosen = shuffle([...pool]).slice(0, count);
+
+  // --- Step 3: build a new prompt by replacing chosen words in full sentence ---
+  // We replace the FIRST occurrence of each chosen word (case-insensitive) with 【___】
+  let newPrompt = full;
+  // Strip [SLOT] markers for clean display, keep 🔴 markers for Task A
+  // For Task A, keep the 🔴[...] slots as-is in the display prompt
+  const activeBlanks = [];
+
+  for(const word of chosen){
+    // Escape for regex
+    const esc = word.replace(/[-.*+?^${}()|[\]\\]/g, '\\$&');
+    // Match whole word only, case-insensitive
+    const re = new RegExp('\\b(' + esc + ')\\b', 'i');
+    if(re.test(newPrompt)){
+      newPrompt = newPrompt.replace(re, '【___】');
+      // Store the actual word (as it appeared) for answer matching
+      activeBlanks.push(word);
+    }
+  }
+
+  // Fallback: if nothing got replaced (e.g. multi-word phrases), use orig
+  if(activeBlanks.length === 0){
+    activeCard = { prompt: card.prompt, blanks: origBlanks, orig: card };
     return activeCard;
   }
 
-  // Pick how many blanks to show: at least 1, at most all
-  // Weight toward showing fewer blanks for harder cards
-  const minShow = 1;
-  const maxShow = allBlanks.length;
-  const count = Math.floor(Math.random() * (maxShow - minShow + 1)) + minShow;
+  // Replace [SLOT] placeholders with styled versions
+  newPrompt = newPrompt.replace(/\[([^\]]+)\]/g, '[$1]');
 
-  // Randomly pick which blank indices to actually blank out
-  const indices = shuffle([...Array(allBlanks.length).keys()]);
-  const blankSet = new Set(indices.slice(0, count));
-
-  // Rebuild prompt: 【___】 slots → blank if in blankSet, else show the word
-  let slotIdx = 0;
-  const activeBlanksList = [];
-  const newPrompt = card.prompt.replace(/【___】/g, () => {
-    const i = slotIdx++;
-    if(blankSet.has(i)) {
-      activeBlanksList.push(allBlanks[i]);
-      return '【___】';
-    } else {
-      // Show the word inline (styled as "given")
-      return `【${allBlanks[i]}】`;
-    }
-  });
-
-  activeCard = { prompt: newPrompt, blanks: activeBlanksList, orig: card };
+  activeCard = { prompt: newPrompt, blanks: activeBlanks, orig: card };
   return activeCard;
 }
 
 function renderPrompt(text, task) {
   const blankCls = task==='A' ? 'red-blank' : 'kw-blank';
-  // blank slots
-  let html = text.replace(/【___】/g, `<span class="${blankCls}">?</span>`);
-  // given (non-blank) slots — styled as revealed
-  html = html.replace(/【([^】]+)】/g, `<span class="${blankCls} filled" style="opacity:.75">$1</span>`);
-  // highlight 🔴[...] slots in task A
-  html = html.replace(/🔴\[([^\]]+)\]/g, '<span style="color:#e06c75;font-family:\'DM Mono\',monospace;font-size:13px;opacity:.8">[$1]</span>');
+  // Escape HTML first
+  let html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // blank markers → input placeholder span
+  html = html.replace(/【___】/g, `<span class="${blankCls}">?</span>`);
+  // 🔴[SLOT] markers for Task A → styled slot label
+  html = html.replace(/🔴\[([^\]]+)\]/g,
+    '<span style="color:#e06c75;font-family:monospace;font-size:12px;opacity:.7;border:1px dashed #e06c75;border-radius:4px;padding:1px 5px">$1</span>');
   // newlines
   html = html.replace(/\n/g, '<br>');
   return html;
@@ -716,12 +768,17 @@ function renderPrompt(text, task) {
 function renderFilled(text, blanks, correct, task) {
   const cls = correct ? 'filled' : 'wrong';
   const blankBase = task==='A' ? 'red-blank' : 'kw-blank';
-  let i=0;
-  // blank slots → filled with answer
-  let html = text.replace(/【___】/g, ()=>`<span class="${blankBase} ${cls}">${blanks[i++]||'?'}</span>`);
-  // given slots (non-blank, shown inline) → keep styled as given
-  html = html.replace(/【([^】]+)】/g, `<span class="${blankBase} filled" style="opacity:.75">$1</span>`);
-  html = html.replace(/🔴\[([^\]]+)\]/g, '<span style="color:#e06c75;font-family:\'DM Mono\',monospace;font-size:13px;opacity:.8">[$1]</span>');
+  let i = 0;
+  let html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // blank markers → filled answer spans
+  html = html.replace(/【___】/g, () => {
+    const word = blanks[i++] || '?';
+    return `<span class="${blankBase} ${cls}">${word}</span>`;
+  });
+  // 🔴[SLOT] markers
+  html = html.replace(/🔴\[([^\]]+)\]/g,
+    '<span style="color:#e06c75;font-family:monospace;font-size:12px;opacity:.7;border:1px dashed #e06c75;border-radius:4px;padding:1px 5px">$1</span>');
   html = html.replace(/\n/g,'<br>');
   return html;
 }
